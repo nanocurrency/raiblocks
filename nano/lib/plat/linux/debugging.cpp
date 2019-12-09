@@ -1,12 +1,12 @@
 #include <nano/lib/utility.hpp>
 
+#include <cassert>
+#include <cstring>
+
 #include <fcntl.h>
 #include <link.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#include <cassert>
-#include <cstring>
 
 namespace
 {
@@ -25,9 +25,9 @@ int create_load_memory_address_file (dl_phdr_info * info, size_t, void *)
 	// Open file
 	const auto file_descriptor = ::open (filename, O_CREAT | O_WRONLY | O_TRUNC,
 #if defined(S_IWRITE) && defined(S_IREAD)
-	S_IWRITE | S_IREAD
+		S_IWRITE | S_IREAD
 #else
-	0
+		0
 #endif
 	);
 	assert (file_descriptor);

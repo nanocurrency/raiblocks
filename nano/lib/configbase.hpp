@@ -14,7 +14,7 @@ namespace nano
 /** Type trait to determine if T is compatible with boost's lexical_cast */
 template <class T>
 struct is_lexical_castable : std::integral_constant<bool,
-                             (std::is_default_constructible<T>::value && (boost::has_right_shift<std::basic_istream<wchar_t>, T>::value || boost::has_right_shift<std::basic_istream<char>, T>::value))>
+								 (std::is_default_constructible<T>::value && (boost::has_right_shift<std::basic_istream<wchar_t>, T>::value || boost::has_right_shift<std::basic_istream<char>, T>::value))>
 {
 };
 
@@ -41,8 +41,8 @@ class configbase : public nano::error_aware<>
 {
 public:
 	configbase () = default;
-	configbase (std::shared_ptr<nano::error> const & error_a) :
-	error (error_a)
+	configbase (std::shared_ptr<nano::error> const & error_a)
+		: error (error_a)
 	{
 	}
 

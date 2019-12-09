@@ -15,17 +15,17 @@
 #include <cassert>
 #include <numeric>
 
-nano::confirmation_height_processor::confirmation_height_processor (nano::pending_confirmation_height & pending_confirmation_height_a, nano::ledger & ledger_a, nano::active_transactions & active_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logger_mt & logger_a) :
-pending_confirmations (pending_confirmation_height_a),
-ledger (ledger_a),
-active (active_a),
-logger (logger_a),
-write_database_queue (write_database_queue_a),
-batch_separate_pending_min_time (batch_separate_pending_min_time_a),
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::confirmation_height_processing);
-	this->run ();
-})
+nano::confirmation_height_processor::confirmation_height_processor (nano::pending_confirmation_height & pending_confirmation_height_a, nano::ledger & ledger_a, nano::active_transactions & active_a, nano::write_database_queue & write_database_queue_a, std::chrono::milliseconds batch_separate_pending_min_time_a, nano::logger_mt & logger_a)
+	: pending_confirmations (pending_confirmation_height_a)
+	, ledger (ledger_a)
+	, active (active_a)
+	, logger (logger_a)
+	, write_database_queue (write_database_queue_a)
+	, batch_separate_pending_min_time (batch_separate_pending_min_time_a)
+	, thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::confirmation_height_processing);
+		this->run ();
+	})
 {
 }
 
@@ -433,30 +433,31 @@ void nano::confirmation_height_processor::collect_unconfirmed_receive_and_source
 
 namespace nano
 {
-confirmation_height_processor::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, std::vector<callback_data> const & block_callbacks_required_a) :
-account (account_a),
-hash (hash_a),
-height (height_a),
-num_blocks_confirmed (num_blocks_confirmed_a),
-block_callbacks_required (block_callbacks_required_a)
+confirmation_height_processor::conf_height_details::conf_height_details (nano::account const & account_a, nano::block_hash const & hash_a, uint64_t height_a, uint64_t num_blocks_confirmed_a, std::vector<callback_data> const & block_callbacks_required_a)
+	: account (account_a)
+	, hash (hash_a)
+	, height (height_a)
+	, num_blocks_confirmed (num_blocks_confirmed_a)
+	, block_callbacks_required (block_callbacks_required_a)
 {
 }
 
-confirmation_height_processor::receive_source_pair::receive_source_pair (confirmation_height_processor::conf_height_details const & receive_details_a, const block_hash & source_a) :
-receive_details (receive_details_a),
-source_hash (source_a)
+confirmation_height_processor::receive_source_pair::receive_source_pair (confirmation_height_processor::conf_height_details const & receive_details_a, const block_hash & source_a)
+	: receive_details (receive_details_a)
+	, source_hash (source_a)
 {
 }
 
-confirmation_height_processor::confirmed_iterated_pair::confirmed_iterated_pair (uint64_t confirmed_height_a, uint64_t iterated_height_a) :
-confirmed_height (confirmed_height_a), iterated_height (iterated_height_a)
+confirmation_height_processor::confirmed_iterated_pair::confirmed_iterated_pair (uint64_t confirmed_height_a, uint64_t iterated_height_a)
+	: confirmed_height (confirmed_height_a)
+	, iterated_height (iterated_height_a)
 {
 }
 
-confirmation_height_processor::callback_data::callback_data (std::shared_ptr<nano::block> const & block_a, nano::block_sideband const & sideband_a, nano::election_status_type election_status_type_a) :
-block (block_a),
-sideband (sideband_a),
-election_status_type (election_status_type_a)
+confirmation_height_processor::callback_data::callback_data (std::shared_ptr<nano::block> const & block_a, nano::block_sideband const & sideband_a, nano::election_status_type election_status_type_a)
+	: block (block_a)
+	, sideband (sideband_a)
+	, election_status_type (election_status_type_a)
 {
 }
 

@@ -6,9 +6,9 @@
 
 #include <boost/format.hpp>
 
-nano::bootstrap_listener::bootstrap_listener (uint16_t port_a, nano::node & node_a) :
-node (node_a),
-port (port_a)
+nano::bootstrap_listener::bootstrap_listener (uint16_t port_a, nano::node & node_a)
+	: node (node_a)
+	, port (port_a)
 {
 }
 
@@ -84,10 +84,10 @@ std::unique_ptr<seq_con_info_component> collect_seq_con_info (bootstrap_listener
 }
 }
 
-nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::node> node_a) :
-receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
-socket (socket_a),
-node (node_a)
+nano::bootstrap_server::bootstrap_server (std::shared_ptr<nano::socket> socket_a, std::shared_ptr<nano::node> node_a)
+	: receive_buffer (std::make_shared<std::vector<uint8_t>> ())
+	, socket (socket_a)
+	, node (node_a)
 {
 	receive_buffer->resize (1024);
 }
@@ -510,8 +510,8 @@ namespace
 class request_response_visitor : public nano::message_visitor
 {
 public:
-	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> const & connection_a) :
-	connection (connection_a)
+	explicit request_response_visitor (std::shared_ptr<nano::bootstrap_server> const & connection_a)
+		: connection (connection_a)
 	{
 	}
 	virtual ~request_response_visitor () = default;

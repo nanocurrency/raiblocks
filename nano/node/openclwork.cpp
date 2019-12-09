@@ -382,9 +382,9 @@ void printstate (blake2b_state * S)
 		std::cout << +x;
 	}
 	std::cout
-	<< std::dec << " " << S->buflen
-	<< std::hex << " " << S->last_node
-	<< std::dec << std::endl;
+		<< std::dec << " " << S->buflen
+		<< std::hex << " " << S->last_node
+		<< std::dec << std::endl;
 }
 
 nano::opencl_environment::opencl_environment (bool & error_a)
@@ -496,17 +496,17 @@ void nano::opencl_environment::dump (std::ostream & stream)
 	}
 }
 
-nano::opencl_work::opencl_work (bool & error_a, nano::opencl_config const & config_a, nano::opencl_environment & environment_a, nano::logger_mt & logger_a) :
-config (config_a),
-context (0),
-attempt_buffer (0),
-result_buffer (0),
-item_buffer (0),
-difficulty_buffer (0),
-program (0),
-kernel (0),
-queue (0),
-logger (logger_a)
+nano::opencl_work::opencl_work (bool & error_a, nano::opencl_config const & config_a, nano::opencl_environment & environment_a, nano::logger_mt & logger_a)
+	: config (config_a)
+	, context (0)
+	, attempt_buffer (0)
+	, result_buffer (0)
+	, item_buffer (0)
+	, difficulty_buffer (0)
+	, program (0)
+	, kernel (0)
+	, queue (0)
+	, logger (logger_a)
 {
 	error_a |= config.platform >= environment_a.platforms.size ();
 	if (!error_a)

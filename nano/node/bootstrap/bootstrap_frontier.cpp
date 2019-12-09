@@ -20,27 +20,27 @@ void nano::frontier_req_client::run ()
 	request.count = std::numeric_limits<decltype (request.count)>::max ();
 	auto this_l (shared_from_this ());
 	connection->channel->send (
-	request, [this_l](boost::system::error_code const & ec, size_t size_a) {
-		if (!ec)
-		{
-			this_l->receive_frontier ();
-		}
-		else
-		{
-			if (this_l->connection->node->config.logging.network_logging ())
+		request, [this_l](boost::system::error_code const & ec, size_t size_a) {
+			if (!ec)
 			{
-				this_l->connection->node->logger.try_log (boost::str (boost::format ("Error while sending bootstrap request %1%") % ec.message ()));
+				this_l->receive_frontier ();
 			}
-		}
-	},
-	false); // is bootstrap traffic is_droppable false
+			else
+			{
+				if (this_l->connection->node->config.logging.network_logging ())
+				{
+					this_l->connection->node->logger.try_log (boost::str (boost::format ("Error while sending bootstrap request %1%") % ec.message ()));
+				}
+			}
+		},
+		false); // is bootstrap traffic is_droppable false
 }
 
-nano::frontier_req_client::frontier_req_client (std::shared_ptr<nano::bootstrap_client> connection_a) :
-connection (connection_a),
-current (0),
-count (0),
-bulk_push_cost (0)
+nano::frontier_req_client::frontier_req_client (std::shared_ptr<nano::bootstrap_client> connection_a)
+	: connection (connection_a)
+	, current (0)
+	, count (0)
+	, bulk_push_cost (0)
 {
 	auto transaction (connection->node->store.tx_begin_read ());
 	next (transaction);
@@ -228,12 +228,12 @@ void nano::frontier_req_client::next (nano::transaction const & transaction_a)
 	accounts.pop_front ();
 }
 
-nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::frontier_req> request_a) :
-connection (connection_a),
-current (request_a->start.number () - 1),
-frontier (0),
-request (std::move (request_a)),
-count (0)
+nano::frontier_req_server::frontier_req_server (std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::frontier_req> request_a)
+	: connection (connection_a)
+	, current (request_a->start.number () - 1)
+	, frontier (0)
+	, request (std::move (request_a))
+	, count (0)
 {
 	next ();
 }

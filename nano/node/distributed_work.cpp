@@ -14,16 +14,16 @@ std::shared_ptr<request_type> nano::work_peer_request::get_prepared_json_request
 	return request;
 }
 
-nano::distributed_work::distributed_work (nano::node & node_a, nano::root const & root_a, std::vector<std::pair<std::string, uint16_t>> const & peers_a, unsigned int backoff_a, std::function<void(boost::optional<uint64_t>)> const & callback_a, uint64_t difficulty_a, boost::optional<nano::account> const & account_a) :
-callback (callback_a),
-backoff (backoff_a),
-node (node_a),
-root (root_a),
-account (account_a),
-peers (peers_a),
-need_resolve (peers_a),
-difficulty (difficulty_a),
-elapsed (nano::timer_state::started, "distributed work generation timer")
+nano::distributed_work::distributed_work (nano::node & node_a, nano::root const & root_a, std::vector<std::pair<std::string, uint16_t>> const & peers_a, unsigned int backoff_a, std::function<void(boost::optional<uint64_t>)> const & callback_a, uint64_t difficulty_a, boost::optional<nano::account> const & account_a)
+	: callback (callback_a)
+	, backoff (backoff_a)
+	, node (node_a)
+	, root (root_a)
+	, account (account_a)
+	, peers (peers_a)
+	, need_resolve (peers_a)
+	, difficulty (difficulty_a)
+	, elapsed (nano::timer_state::started, "distributed work generation timer")
 {
 	assert (!finished);
 	assert (status == work_generation_status::ongoing);
@@ -99,22 +99,22 @@ void nano::distributed_work::start_work ()
 	{
 		local_generation_started = true;
 		node.work.generate (
-		root, [this_l](boost::optional<uint64_t> const & work_a) {
-			if (work_a.is_initialized ())
-			{
-				this_l->set_once (*work_a);
-			}
-			else if (!this_l->finished.exchange (true))
-			{
-				this_l->status = work_generation_status::failure_local;
-				if (this_l->callback)
+			root, [this_l](boost::optional<uint64_t> const & work_a) {
+				if (work_a.is_initialized ())
 				{
-					this_l->callback (boost::none);
+					this_l->set_once (*work_a);
 				}
-			}
-			this_l->stop_once (false);
-		},
-		difficulty);
+				else if (!this_l->finished.exchange (true))
+				{
+					this_l->status = work_generation_status::failure_local;
+					if (this_l->callback)
+					{
+						this_l->callback (boost::none);
+					}
+				}
+				this_l->stop_once (false);
+			},
+			difficulty);
 	}
 
 	if (!outstanding.empty ())

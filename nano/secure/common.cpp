@@ -58,13 +58,19 @@ char const * live_genesis_data = R"%%%({
 	})%%%";
 }
 
-nano::network_params::network_params () :
-network_params (network_constants::active_network)
+nano::network_params::network_params ()
+	: network_params (network_constants::active_network)
 {
 }
 
-nano::network_params::network_params (nano::nano_networks network_a) :
-network (network_a), protocol (network_a), ledger (network), voting (network), node (network), portmapping (network), bootstrap (network)
+nano::network_params::network_params (nano::nano_networks network_a)
+	: network (network_a)
+	, protocol (network_a)
+	, ledger (network)
+	, voting (network)
+	, node (network)
+	, portmapping (network)
+	, bootstrap (network)
 {
 	unsigned constexpr kdf_full_work = 64 * 1024;
 	unsigned constexpr kdf_test_work = 8;
@@ -76,24 +82,24 @@ nano::protocol_constants::protocol_constants (nano::nano_networks network_a)
 {
 }
 
-nano::ledger_constants::ledger_constants (nano::network_constants & network_constants) :
-ledger_constants (network_constants.network ())
+nano::ledger_constants::ledger_constants (nano::network_constants & network_constants)
+	: ledger_constants (network_constants.network ())
 {
 }
 
-nano::ledger_constants::ledger_constants (nano::nano_networks network_a) :
-zero_key ("0"),
-test_genesis_key (test_private_key_data),
-nano_test_account (test_public_key_data),
-nano_beta_account (beta_public_key_data),
-nano_live_account (live_public_key_data),
-nano_test_genesis (test_genesis_data),
-nano_beta_genesis (beta_genesis_data),
-nano_live_genesis (live_genesis_data),
-genesis_account (network_a == nano::nano_networks::nano_test_network ? nano_test_account : network_a == nano::nano_networks::nano_beta_network ? nano_beta_account : nano_live_account),
-genesis_block (network_a == nano::nano_networks::nano_test_network ? nano_test_genesis : network_a == nano::nano_networks::nano_beta_network ? nano_beta_genesis : nano_live_genesis),
-genesis_amount (std::numeric_limits<nano::uint128_t>::max ()),
-burn_account (0)
+nano::ledger_constants::ledger_constants (nano::nano_networks network_a)
+	: zero_key ("0")
+	, test_genesis_key (test_private_key_data)
+	, nano_test_account (test_public_key_data)
+	, nano_beta_account (beta_public_key_data)
+	, nano_live_account (live_public_key_data)
+	, nano_test_genesis (test_genesis_data)
+	, nano_beta_genesis (beta_genesis_data)
+	, nano_live_genesis (live_genesis_data)
+	, genesis_account (network_a == nano::nano_networks::nano_test_network ? nano_test_account : network_a == nano::nano_networks::nano_beta_network ? nano_beta_account : nano_live_account)
+	, genesis_block (network_a == nano::nano_networks::nano_test_network ? nano_test_genesis : network_a == nano::nano_networks::nano_beta_network ? nano_beta_genesis : nano_live_genesis)
+	, genesis_amount (std::numeric_limits<nano::uint128_t>::max ())
+	, burn_account (0)
 {
 	nano::link epoch_link_v1;
 	const char * epoch_message_v1 ("epoch v1 block");
@@ -173,8 +179,8 @@ nano::keypair::keypair ()
 }
 
 // Create a keypair given a private key
-nano::keypair::keypair (nano::raw_key && prv_a) :
-prv (std::move (prv_a))
+nano::keypair::keypair (nano::raw_key && prv_a)
+	: prv (std::move (prv_a))
 {
 	ed25519_publickey (prv.data.bytes.data (), pub.bytes.data ());
 }
@@ -195,14 +201,14 @@ void nano::serialize_block (nano::stream & stream_a, nano::block const & block_a
 	block_a.serialize (stream_a);
 }
 
-nano::account_info::account_info (nano::block_hash const & head_a, nano::account const & representative_a, nano::block_hash const & open_block_a, nano::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, nano::epoch epoch_a) :
-head (head_a),
-representative (representative_a),
-open_block (open_block_a),
-balance (balance_a),
-modified (modified_a),
-block_count (block_count_a),
-epoch_m (epoch_a)
+nano::account_info::account_info (nano::block_hash const & head_a, nano::account const & representative_a, nano::block_hash const & open_block_a, nano::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, nano::epoch epoch_a)
+	: head (head_a)
+	, representative (representative_a)
+	, open_block (open_block_a)
+	, balance (balance_a)
+	, modified (modified_a)
+	, block_count (block_count_a)
+	, epoch_m (epoch_a)
 {
 }
 
@@ -259,10 +265,10 @@ size_t nano::block_counts::sum () const
 	return send + receive + open + change + state;
 }
 
-nano::pending_info::pending_info (nano::account const & source_a, nano::amount const & amount_a, nano::epoch epoch_a) :
-source (source_a),
-amount (amount_a),
-epoch (epoch_a)
+nano::pending_info::pending_info (nano::account const & source_a, nano::amount const & amount_a, nano::epoch epoch_a)
+	: source (source_a)
+	, amount (amount_a)
+	, epoch (epoch_a)
 {
 }
 
@@ -293,9 +299,9 @@ bool nano::pending_info::operator== (nano::pending_info const & other_a) const
 	return source == other_a.source && amount == other_a.amount && epoch == other_a.epoch;
 }
 
-nano::pending_key::pending_key (nano::account const & account_a, nano::block_hash const & hash_a) :
-account (account_a),
-hash (hash_a)
+nano::pending_key::pending_key (nano::account const & account_a, nano::block_hash const & hash_a)
+	: account (account_a)
+	, hash (hash_a)
 {
 }
 
@@ -325,12 +331,12 @@ nano::account const & nano::pending_key::key () const
 	return account;
 }
 
-nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> block_a, nano::account const & account_a, uint64_t modified_a, nano::signature_verification verified_a, bool confirmed_a) :
-block (block_a),
-account (account_a),
-modified (modified_a),
-verified (verified_a),
-confirmed (confirmed_a)
+nano::unchecked_info::unchecked_info (std::shared_ptr<nano::block> block_a, nano::account const & account_a, uint64_t modified_a, nano::signature_verification verified_a, bool confirmed_a)
+	: block (block_a)
+	, account (account_a)
+	, modified (modified_a)
+	, verified (verified_a)
+	, confirmed (confirmed_a)
 {
 }
 
@@ -363,8 +369,9 @@ bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 	return error;
 }
 
-nano::endpoint_key::endpoint_key (const std::array<uint8_t, 16> & address_a, uint16_t port_a) :
-address (address_a), network_port (boost::endian::native_to_big (port_a))
+nano::endpoint_key::endpoint_key (const std::array<uint8_t, 16> & address_a, uint16_t port_a)
+	: address (address_a)
+	, network_port (boost::endian::native_to_big (port_a))
 {
 }
 
@@ -378,9 +385,9 @@ uint16_t nano::endpoint_key::port () const
 	return boost::endian::big_to_native (network_port);
 }
 
-nano::block_info::block_info (nano::account const & account_a, nano::amount const & balance_a) :
-account (account_a),
-balance (balance_a)
+nano::block_info::block_info (nano::account const & account_a, nano::amount const & balance_a)
+	: account (account_a)
+	, balance (balance_a)
 {
 }
 
@@ -456,11 +463,11 @@ std::string nano::vote::to_json () const
 	return stream.str ();
 }
 
-nano::vote::vote (nano::vote const & other_a) :
-sequence (other_a.sequence),
-blocks (other_a.blocks),
-account (other_a.account),
-signature (other_a.signature)
+nano::vote::vote (nano::vote const & other_a)
+	: sequence (other_a.sequence)
+	, blocks (other_a.blocks)
+	, account (other_a.account)
+	, signature (other_a.signature)
 {
 }
 
@@ -507,17 +514,17 @@ nano::vote::vote (bool & error_a, nano::stream & stream_a, nano::block_type type
 	}
 }
 
-nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t sequence_a, std::shared_ptr<nano::block> block_a) :
-sequence (sequence_a),
-blocks (1, block_a),
-account (account_a),
-signature (nano::sign_message (prv_a, account_a, hash ()))
+nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t sequence_a, std::shared_ptr<nano::block> block_a)
+	: sequence (sequence_a)
+	, blocks (1, block_a)
+	, account (account_a)
+	, signature (nano::sign_message (prv_a, account_a, hash ()))
 {
 }
 
-nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t sequence_a, std::vector<nano::block_hash> const & blocks_a) :
-sequence (sequence_a),
-account (account_a)
+nano::vote::vote (nano::account const & account_a, nano::raw_key const & prv_a, uint64_t sequence_a, std::vector<nano::block_hash> const & blocks_a)
+	: sequence (sequence_a)
+	, account (account_a)
 {
 	assert (!blocks_a.empty ());
 	assert (blocks_a.size () <= 12);
@@ -699,8 +706,8 @@ boost::transform_iterator<nano::iterate_vote_blocks_as_hash, nano::vote_blocks_v
 	return boost::transform_iterator<nano::iterate_vote_blocks_as_hash, nano::vote_blocks_vec_iter> (blocks.end (), nano::iterate_vote_blocks_as_hash ());
 }
 
-nano::vote_uniquer::vote_uniquer (nano::block_uniquer & uniquer_a) :
-uniquer (uniquer_a)
+nano::vote_uniquer::vote_uniquer (nano::block_uniquer & uniquer_a)
+	: uniquer (uniquer_a)
 {
 }
 
@@ -793,9 +800,9 @@ nano::wallet_id nano::random_wallet_id ()
 	return wallet_id;
 }
 
-nano::unchecked_key::unchecked_key (nano::block_hash const & previous_a, nano::block_hash const & hash_a) :
-previous (previous_a),
-hash (hash_a)
+nano::unchecked_key::unchecked_key (nano::block_hash const & previous_a, nano::block_hash const & hash_a)
+	: previous (previous_a)
+	, hash (hash_a)
 {
 }
 

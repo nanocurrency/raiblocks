@@ -2,10 +2,10 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/openclconfig.hpp>
 
-nano::opencl_config::opencl_config (unsigned platform_a, unsigned device_a, unsigned threads_a) :
-platform (platform_a),
-device (device_a),
-threads (threads_a)
+nano::opencl_config::opencl_config (unsigned platform_a, unsigned device_a, unsigned threads_a)
+	: platform (platform_a)
+	, device (device_a)
+	, threads (threads_a)
 {
 }
 

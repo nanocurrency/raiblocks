@@ -20,15 +20,15 @@ const char * default_beta_peer_network = "peering-beta.nano.org";
 const char * default_live_peer_network = "peering.nano.org";
 }
 
-nano::node_config::node_config () :
-node_config (0, nano::logging ())
+nano::node_config::node_config ()
+	: node_config (0, nano::logging ())
 {
 }
 
-nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a) :
-peering_port (peering_port_a),
-logging (logging_a),
-external_address (boost::asio::ip::address_v6{}.to_string ())
+nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a)
+	: peering_port (peering_port_a)
+	, logging (logging_a)
+	, external_address (boost::asio::ip::address_v6{}.to_string ())
 {
 	// The default constructor passes 0 to indicate we should use the default port,
 	// which is determined at node startup based on active network.

@@ -5,22 +5,22 @@
 
 #include <boost/format.hpp>
 
-nano::pull_info::pull_info (nano::hash_or_account const & account_or_head_a, nano::block_hash const & head_a, nano::block_hash const & end_a, count_t count_a, unsigned retry_limit_a) :
-account_or_head (account_or_head_a),
-head (head_a),
-head_original (head_a),
-end (end_a),
-count (count_a),
-retry_limit (retry_limit_a)
+nano::pull_info::pull_info (nano::hash_or_account const & account_or_head_a, nano::block_hash const & head_a, nano::block_hash const & end_a, count_t count_a, unsigned retry_limit_a)
+	: account_or_head (account_or_head_a)
+	, head (head_a)
+	, head_original (head_a)
+	, end (end_a)
+	, count (count_a)
+	, retry_limit (retry_limit_a)
 {
 }
 
-nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::bootstrap_client> connection_a, nano::pull_info const & pull_a) :
-connection (connection_a),
-known_account (0),
-pull (pull_a),
-pull_blocks (0),
-unexpected_count (0)
+nano::bulk_pull_client::bulk_pull_client (std::shared_ptr<nano::bootstrap_client> connection_a, nano::pull_info const & pull_a)
+	: connection (connection_a)
+	, known_account (0)
+	, pull (pull_a)
+	, pull_blocks (0)
+	, unexpected_count (0)
 {
 	connection->attempt->condition.notify_all ();
 }
@@ -84,21 +84,21 @@ void nano::bulk_pull_client::request ()
 	}
 	auto this_l (shared_from_this ());
 	connection->channel->send (
-	req, [this_l](boost::system::error_code const & ec, size_t size_a) {
-		if (!ec)
-		{
-			this_l->throttled_receive_block ();
-		}
-		else
-		{
-			if (this_l->connection->node->config.logging.bulk_pull_logging ())
+		req, [this_l](boost::system::error_code const & ec, size_t size_a) {
+			if (!ec)
 			{
-				this_l->connection->node->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel->to_string ()));
+				this_l->throttled_receive_block ();
 			}
-			this_l->connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
-		}
-	},
-	false); // is bootstrap traffic is_droppable false
+			else
+			{
+				if (this_l->connection->node->config.logging.bulk_pull_logging ())
+				{
+					this_l->connection->node->logger.try_log (boost::str (boost::format ("Error sending bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel->to_string ()));
+				}
+				this_l->connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_request_failure, nano::stat::dir::in);
+			}
+		},
+		false); // is bootstrap traffic is_droppable false
 }
 
 void nano::bulk_pull_client::throttled_receive_block ()
@@ -282,10 +282,10 @@ void nano::bulk_pull_client::received_block (boost::system::error_code const & e
 	}
 }
 
-nano::bulk_pull_account_client::bulk_pull_account_client (std::shared_ptr<nano::bootstrap_client> connection_a, nano::account const & account_a) :
-connection (connection_a),
-account (account_a),
-pull_blocks (0)
+nano::bulk_pull_account_client::bulk_pull_account_client (std::shared_ptr<nano::bootstrap_client> connection_a, nano::account const & account_a)
+	: connection (connection_a)
+	, account (account_a)
+	, pull_blocks (0)
 {
 	connection->attempt->condition.notify_all ();
 }
@@ -317,22 +317,22 @@ void nano::bulk_pull_account_client::request ()
 	}
 	auto this_l (shared_from_this ());
 	connection->channel->send (
-	req, [this_l](boost::system::error_code const & ec, size_t size_a) {
-		if (!ec)
-		{
-			this_l->receive_pending ();
-		}
-		else
-		{
-			this_l->connection->attempt->requeue_pending (this_l->account);
-			if (this_l->connection->node->config.logging.bulk_pull_logging ())
+		req, [this_l](boost::system::error_code const & ec, size_t size_a) {
+			if (!ec)
 			{
-				this_l->connection->node->logger.try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel->to_string ()));
+				this_l->receive_pending ();
 			}
-			this_l->connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
-		}
-	},
-	false); // is bootstrap traffic is_droppable false
+			else
+			{
+				this_l->connection->attempt->requeue_pending (this_l->account);
+				if (this_l->connection->node->config.logging.bulk_pull_logging ())
+				{
+					this_l->connection->node->logger.try_log (boost::str (boost::format ("Error starting bulk pull request to %1%: to %2%") % ec.message () % this_l->connection->channel->to_string ()));
+				}
+				this_l->connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_error_starting_request, nano::stat::dir::in);
+			}
+		},
+		false); // is bootstrap traffic is_droppable false
 }
 
 void nano::bulk_pull_account_client::receive_pending ()
@@ -627,9 +627,9 @@ void nano::bulk_pull_server::no_block_sent (boost::system::error_code const & ec
 	}
 }
 
-nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a) :
-connection (connection_a),
-request (std::move (request_a))
+nano::bulk_pull_server::bulk_pull_server (std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull> request_a)
+	: connection (connection_a)
+	, request (std::move (request_a))
 {
 	set_current_end ();
 }
@@ -947,10 +947,10 @@ void nano::bulk_pull_account_server::complete (boost::system::error_code const &
 	}
 }
 
-nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a) :
-connection (connection_a),
-request (std::move (request_a)),
-current_key (0, 0)
+nano::bulk_pull_account_server::bulk_pull_account_server (std::shared_ptr<nano::bootstrap_server> const & connection_a, std::unique_ptr<nano::bulk_pull_account> request_a)
+	: connection (connection_a)
+	, request (std::move (request_a))
+	, current_key (0, 0)
 {
 	/*
 	 * Setup the streaming response for the first call to "send_frontier" and  "send_next_block"

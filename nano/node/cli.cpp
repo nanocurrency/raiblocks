@@ -543,11 +543,11 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (valid_type)
 		{
 			std::cout << "# This is an example configuration file for Nano. Visit https://docs.nano.org/running-a-node/configuration/ for more information.\n#\n"
-			          << "# Fields may need to be defined in the context of a [category] above them.\n"
-			          << "# The desired configuration changes should be placed in config-" << type << ".toml in the node data path.\n"
-			          << "# To change a value from its default, uncomment (erasing #) the corresponding field.\n"
-			          << "# It is not recommended to uncomment every field, as the default value for important fields may change in the future. Only change what you need.\n"
-			          << "# Additional information for notable configuration options is available in https://docs.nano.org/running-a-node/configuration/#notable-configuration-options\n";
+					  << "# Fields may need to be defined in the context of a [category] above them.\n"
+					  << "# The desired configuration changes should be placed in config-" << type << ".toml in the node data path.\n"
+					  << "# To change a value from its default, uncomment (erasing #) the corresponding field.\n"
+					  << "# It is not recommended to uncomment every field, as the default value for important fields may change in the future. Only change what you need.\n"
+					  << "# Additional information for notable configuration options is available in https://docs.nano.org/running-a-node/configuration/#notable-configuration-options\n";
 
 			if (vm.count ("use_defaults"))
 			{
@@ -592,8 +592,8 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	{
 		nano::keypair pair;
 		std::cout << "Private: " << pair.prv.data.to_string () << std::endl
-		          << "Public: " << pair.pub.to_string () << std::endl
-		          << "Account: " << pair.pub.to_account () << std::endl;
+				  << "Public: " << pair.pub.to_string () << std::endl
+				  << "Account: " << pair.pub.to_account () << std::endl;
 	}
 	else if (vm.count ("key_expand"))
 	{
@@ -603,8 +603,8 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			prv.decode_hex (vm["key"].as<std::string> ());
 			nano::public_key pub (nano::pub_key (prv));
 			std::cout << "Private: " << prv.to_string () << std::endl
-			          << "Public: " << pub.to_string () << std::endl
-			          << "Account: " << pub.to_account () << std::endl;
+					  << "Public: " << pub.to_string () << std::endl
+					  << "Account: " << pub.to_account () << std::endl;
 		}
 		else
 		{

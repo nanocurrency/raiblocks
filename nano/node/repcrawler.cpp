@@ -1,8 +1,8 @@
 #include <nano/node/node.hpp>
 #include <nano/node/repcrawler.hpp>
 
-nano::rep_crawler::rep_crawler (nano::node & node_a) :
-node (node_a)
+nano::rep_crawler::rep_crawler (nano::node & node_a)
+	: node (node_a)
 {
 	if (!node.flags.disable_rep_crawler)
 	{

@@ -261,10 +261,10 @@ int const nano::wallet_store::special_count (7);
 size_t const nano::wallet_store::check_iv_index (0);
 size_t const nano::wallet_store::seed_iv_index (1);
 
-nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a) :
-password (0, fanout_a),
-wallet_key_mem (0, fanout_a),
-kdf (kdf_a)
+nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a, std::string const & json_a)
+	: password (0, fanout_a)
+	, wallet_key_mem (0, fanout_a)
+	, kdf (kdf_a)
 {
 	init_a = false;
 	initialize (transaction_a, init_a, wallet_a);
@@ -317,10 +317,10 @@ kdf (kdf_a)
 	}
 }
 
-nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a) :
-password (0, fanout_a),
-wallet_key_mem (0, fanout_a),
-kdf (kdf_a)
+nano::wallet_store::wallet_store (bool & init_a, nano::kdf & kdf_a, nano::transaction & transaction_a, nano::account representative_a, unsigned fanout_a, std::string const & wallet_a)
+	: password (0, fanout_a)
+	, wallet_key_mem (0, fanout_a)
+	, kdf (kdf_a)
 {
 	init_a = false;
 	initialize (transaction_a, init_a, wallet_a);
@@ -754,17 +754,17 @@ void nano::kdf::phs (nano::raw_key & result_a, std::string const & password_a, n
 	(void)success;
 }
 
-nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a) :
-lock_observer ([](bool, bool) {}),
-store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config.random_representative (), wallets_a.node.config.password_fanout, wallet_a),
-wallets (wallets_a)
+nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a)
+	: lock_observer ([](bool, bool) {})
+	, store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config.random_representative (), wallets_a.node.config.password_fanout, wallet_a)
+	, wallets (wallets_a)
 {
 }
 
-nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json) :
-lock_observer ([](bool, bool) {}),
-store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config.random_representative (), wallets_a.node.config.password_fanout, wallet_a, json),
-wallets (wallets_a)
+nano::wallet::wallet (bool & init_a, nano::transaction & transaction_a, nano::wallets & wallets_a, std::string const & wallet_a, std::string const & json)
+	: lock_observer ([](bool, bool) {})
+	, store (init_a, wallets_a.kdf, transaction_a, wallets_a.node.config.random_representative (), wallets_a.node.config.password_fanout, wallet_a, json)
+	, wallets (wallets_a)
 {
 }
 
@@ -1386,9 +1386,9 @@ void nano::wallet::work_cache_blocking (nano::account const & account_a, nano::r
 	}
 }
 
-nano::work_watcher::work_watcher (nano::node & node_a) :
-node (node_a),
-stopped (false)
+nano::work_watcher::work_watcher (nano::node & node_a)
+	: node (node_a)
+	, stopped (false)
 {
 	node.observers.blocks.add ([this](nano::election_status const & status_a, nano::account const & account_a, nano::amount const & amount_a, bool is_state_send_a) {
 		this->remove (status_a.winner);
@@ -1448,48 +1448,48 @@ void nano::work_watcher::watching (nano::qualified_root const & root_a, std::sha
 				if (active_difficulty > difficulty && watcher_l->node.work_generation_enabled ())
 				{
 					watcher_l->node.work_generate (
-					root_l, [watcher_l, block_a, root_a](boost::optional<uint64_t> work_a) {
-						if (block_a != nullptr && watcher_l != nullptr && !watcher_l->stopped)
-						{
-							bool updated_l{ false };
-							if (work_a.is_initialized ())
+						root_l, [watcher_l, block_a, root_a](boost::optional<uint64_t> work_a) {
+							if (block_a != nullptr && watcher_l != nullptr && !watcher_l->stopped)
 							{
-								nano::state_block_builder builder;
-								std::error_code ec;
-								std::shared_ptr<nano::state_block> block (builder.from (*block_a).work (*work_a).build (ec));
-
-								if (!ec)
+								bool updated_l{ false };
+								if (work_a.is_initialized ())
 								{
+									nano::state_block_builder builder;
+									std::error_code ec;
+									std::shared_ptr<nano::state_block> block (builder.from (*block_a).work (*work_a).build (ec));
+
+									if (!ec)
 									{
-										auto hash (block_a->hash ());
-										nano::lock_guard<std::mutex> active_guard (watcher_l->node.active.mutex);
-										auto existing (watcher_l->node.active.roots.find (root_a));
-										if (existing != watcher_l->node.active.roots.end ())
 										{
-											auto election (existing->election);
-											if (election->status.winner->hash () == hash)
+											auto hash (block_a->hash ());
+											nano::lock_guard<std::mutex> active_guard (watcher_l->node.active.mutex);
+											auto existing (watcher_l->node.active.roots.find (root_a));
+											if (existing != watcher_l->node.active.roots.end ())
 											{
-												election->status.winner = block;
+												auto election (existing->election);
+												if (election->status.winner->hash () == hash)
+												{
+													election->status.winner = block;
+												}
+												auto current (election->blocks.find (hash));
+												assert (current != election->blocks.end ());
+												current->second = block;
 											}
-											auto current (election->blocks.find (hash));
-											assert (current != election->blocks.end ());
-											current->second = block;
 										}
+										watcher_l->node.network.flood_block (block, false);
+										watcher_l->node.active.update_difficulty (block);
+										watcher_l->update (root_a, block);
+										updated_l = true;
+										watcher_l->watching (root_a, block);
 									}
-									watcher_l->node.network.flood_block (block, false);
-									watcher_l->node.active.update_difficulty (block);
-									watcher_l->update (root_a, block);
-									updated_l = true;
-									watcher_l->watching (root_a, block);
+								}
+								if (!updated_l)
+								{
+									watcher_l->watching (root_a, block_a);
 								}
 							}
-							if (!updated_l)
-							{
-								watcher_l->watching (root_a, block_a);
-							}
-						}
-					},
-					active_difficulty, block_a->account ());
+						},
+						active_difficulty, block_a->account ());
 				}
 				else
 				{
@@ -1552,16 +1552,16 @@ void nano::wallets::do_wallet_actions ()
 	}
 }
 
-nano::wallets::wallets (bool error_a, nano::node & node_a) :
-observer ([](bool) {}),
-node (node_a),
-env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment),
-stopped (false),
-watcher (std::make_shared<nano::work_watcher> (node_a)),
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::wallet_actions);
-	do_wallet_actions ();
-})
+nano::wallets::wallets (bool error_a, nano::node & node_a)
+	: observer ([](bool) {})
+	, node (node_a)
+	, env (boost::polymorphic_downcast<nano::mdb_wallets_store *> (node_a.wallets_store_impl.get ())->environment)
+	, stopped (false)
+	, watcher (std::make_shared<nano::work_watcher> (node_a))
+	, thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::wallet_actions);
+		do_wallet_actions ();
+	})
 {
 	nano::unique_lock<std::mutex> lock (mutex);
 	if (!error_a)
@@ -2000,8 +2000,8 @@ nano::store_iterator<nano::account, nano::wallet_value> nano::wallet_store::end 
 {
 	return nano::store_iterator<nano::account, nano::wallet_value> (nullptr);
 }
-nano::mdb_wallets_store::mdb_wallets_store (boost::filesystem::path const & path_a, int lmdb_max_dbs) :
-environment (error, path_a, lmdb_max_dbs, false, 1ULL * 1024 * 1024 * 1024)
+nano::mdb_wallets_store::mdb_wallets_store (boost::filesystem::path const & path_a, int lmdb_max_dbs)
+	: environment (error, path_a, lmdb_max_dbs, false, 1ULL * 1024 * 1024 * 1024)
 {
 }
 

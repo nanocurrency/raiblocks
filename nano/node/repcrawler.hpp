@@ -27,8 +27,10 @@ class representative
 {
 public:
 	representative () = default;
-	representative (nano::account account_a, nano::amount weight_a, std::shared_ptr<nano::transport::channel> channel_a) :
-	account (account_a), weight (weight_a), channel (channel_a)
+	representative (nano::account account_a, nano::amount weight_a, std::shared_ptr<nano::transport::channel> channel_a)
+		: account (account_a)
+		, weight (weight_a)
+		, channel (channel_a)
 	{
 	}
 	std::reference_wrapper<nano::transport::channel const> channel_ref () const

@@ -3,14 +3,15 @@
 
 #include <boost/filesystem/convenience.hpp>
 
-nano::tomlconfig::tomlconfig () :
-tree (cpptoml::make_table ())
+nano::tomlconfig::tomlconfig ()
+	: tree (cpptoml::make_table ())
 {
 	error = std::make_shared<nano::error> ();
 }
 
-nano::tomlconfig::tomlconfig (std::shared_ptr<cpptoml::table> const & tree_a, std::shared_ptr<nano::error> const & error_a) :
-nano::configbase (error_a), tree (tree_a)
+nano::tomlconfig::tomlconfig (std::shared_ptr<cpptoml::table> const & tree_a, std::shared_ptr<nano::error> const & error_a)
+	: nano::configbase (error_a)
+	, tree (tree_a)
 {
 	if (!error)
 	{
@@ -325,9 +326,9 @@ void nano::tomlconfig::erase_defaults (std::shared_ptr<cpptoml::table> base, std
 				if (arr_other.size () == arr_base.size ())
 				{
 					bool equal = std::equal (arr_other.begin (), arr_other.end (), arr_base.begin (),
-					[](auto const & item1, auto const & item2) -> bool {
-						return (item1->template as<std::string> ()->get () == item2->template as<std::string> ()->get ());
-					});
+						[](auto const & item1, auto const & item2) -> bool {
+							return (item1->template as<std::string> ()->get () == item2->template as<std::string> ()->get ());
+						});
 
 					if (equal)
 					{

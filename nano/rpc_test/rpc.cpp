@@ -24,15 +24,15 @@ namespace
 class test_response
 {
 public:
-	test_response (boost::property_tree::ptree const & request_a, boost::asio::io_context & io_ctx) :
-	request (request_a),
-	sock (io_ctx)
+	test_response (boost::property_tree::ptree const & request_a, boost::asio::io_context & io_ctx)
+		: request (request_a)
+		, sock (io_ctx)
 	{
 	}
 
-	test_response (boost::property_tree::ptree const & request_a, uint16_t port, boost::asio::io_context & io_ctx) :
-	request (request_a),
-	sock (io_ctx)
+	test_response (boost::property_tree::ptree const & request_a, uint16_t port, boost::asio::io_context & io_ctx)
+		: request (request_a)
+		, sock (io_ctx)
 	{
 		run (port);
 	}

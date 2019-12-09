@@ -14,7 +14,7 @@ void output (const char * str, std::chrono::milliseconds time, Mutex & mutex)
 	// Guard standard out to keep the output from being interleaved
 	std::lock_guard<std::mutex> guard (cout_mutex);
 	std::cout << std::addressof (mutex) << " Mutex " << str << " for: " << time.count () << "ms\n"
-	          << stacktrace << std::endl;
+			  << stacktrace << std::endl;
 }
 
 template <typename Mutex>
@@ -41,8 +41,8 @@ void output_if_blocked_long_enough (nano::timer<std::chrono::milliseconds> & tim
 
 namespace nano
 {
-lock_guard<std::mutex>::lock_guard (std::mutex & mutex) :
-mut (mutex)
+lock_guard<std::mutex>::lock_guard (std::mutex & mutex)
+	: mut (mutex)
 {
 	timer.start ();
 
@@ -60,8 +60,8 @@ lock_guard<std::mutex>::~lock_guard () noexcept
 template class lock_guard<std::mutex>;
 
 template <typename Mutex, typename U>
-unique_lock<Mutex, U>::unique_lock (Mutex & mutex) :
-mut (std::addressof (mutex))
+unique_lock<Mutex, U>::unique_lock (Mutex & mutex)
+	: mut (std::addressof (mutex))
 {
 	lock_impl ();
 }

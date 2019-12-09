@@ -48,26 +48,26 @@ bool nano_qt::eventloop_processor::event (QEvent * event_a)
 	return true;
 }
 
-nano_qt::eventloop_event::eventloop_event (std::function<void()> const & action_a) :
-QEvent (QEvent::Type::User),
-action (action_a)
+nano_qt::eventloop_event::eventloop_event (std::function<void()> const & action_a)
+	: QEvent (QEvent::Type::User)
+	, action (action_a)
 {
 }
 
-nano_qt::self_pane::self_pane (nano_qt::wallet & wallet_a, nano::account const & account_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-self_layout (new QHBoxLayout),
-self_window (new QWidget),
-your_account_label (new QLabel ("Your Nano account:")),
-account_window (new QWidget),
-account_layout (new QHBoxLayout),
-account_text (new QLineEdit),
-copy_button (new QPushButton ("Copy")),
-balance_window (new QWidget),
-balance_layout (new QHBoxLayout),
-balance_label (new QLabel),
-wallet (wallet_a)
+nano_qt::self_pane::self_pane (nano_qt::wallet & wallet_a, nano::account const & account_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, self_layout (new QHBoxLayout)
+	, self_window (new QWidget)
+	, your_account_label (new QLabel ("Your Nano account:"))
+	, account_window (new QWidget)
+	, account_layout (new QHBoxLayout)
+	, account_text (new QLineEdit)
+	, copy_button (new QPushButton ("Copy"))
+	, balance_window (new QWidget)
+	, balance_layout (new QHBoxLayout)
+	, balance_label (new QLabel)
+	, wallet (wallet_a)
 {
 	your_account_label->setStyleSheet ("font-weight: bold;");
 	std::string network = wallet.node.network_params.network.get_current_network_as_string ();
@@ -120,21 +120,21 @@ void nano_qt::self_pane::set_balance_text (std::pair<nano::uint128_t, nano::uint
 	wallet.self.balance_label->setText (QString (final_text.c_str ()));
 }
 
-nano_qt::accounts::accounts (nano_qt::wallet & wallet_a) :
-wallet_balance_label (new QLabel),
-window (new QWidget),
-layout (new QVBoxLayout),
-model (new QStandardItemModel),
-view (new QTableView),
-use_account (new QPushButton ("Use account")),
-create_account (new QPushButton ("Create account")),
-import_wallet (new QPushButton ("Import wallet")),
-backup_seed (new QPushButton ("Copy wallet seed to clipboard")),
-separator (new QFrame),
-account_key_line (new QLineEdit),
-account_key_button (new QPushButton ("Import adhoc key")),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::accounts::accounts (nano_qt::wallet & wallet_a)
+	: wallet_balance_label (new QLabel)
+	, window (new QWidget)
+	, layout (new QVBoxLayout)
+	, model (new QStandardItemModel)
+	, view (new QTableView)
+	, use_account (new QPushButton ("Use account"))
+	, create_account (new QPushButton ("Create account"))
+	, import_wallet (new QPushButton ("Import wallet"))
+	, backup_seed (new QPushButton ("Copy wallet seed to clipboard"))
+	, separator (new QFrame)
+	, account_key_line (new QLineEdit)
+	, account_key_button (new QPushButton ("Import adhoc key"))
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	separator->setFrameShape (QFrame::HLine);
 	separator->setFrameShadow (QFrame::Sunken);
@@ -320,22 +320,22 @@ void nano_qt::accounts::refresh ()
 	}
 }
 
-nano_qt::import::import (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-seed_label (new QLabel ("Seed:")),
-seed (new QLineEdit),
-clear_label (new QLabel ("Modifying seed clears existing keys\nType 'clear keys' below to confirm:")),
-clear_line (new QLineEdit),
-import_seed (new QPushButton ("Import seed")),
-separator (new QFrame),
-filename_label (new QLabel ("Path to file:")),
-filename (new QLineEdit),
-password_label (new QLabel ("Password:")),
-password (new QLineEdit),
-perform (new QPushButton ("Import")),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::import::import (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, seed_label (new QLabel ("Seed:"))
+	, seed (new QLineEdit)
+	, clear_label (new QLabel ("Modifying seed clears existing keys\nType 'clear keys' below to confirm:"))
+	, clear_line (new QLineEdit)
+	, import_seed (new QPushButton ("Import seed"))
+	, separator (new QFrame)
+	, filename_label (new QLabel ("Path to file:"))
+	, filename (new QLineEdit)
+	, password_label (new QLabel ("Password:"))
+	, password (new QLineEdit)
+	, perform (new QPushButton ("Import"))
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	layout->addWidget (seed_label);
 	layout->addWidget (seed);
@@ -475,18 +475,18 @@ wallet (wallet_a)
 	});
 }
 
-nano_qt::history::history (nano::ledger & ledger_a, nano::account const & account_a, nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-model (new QStandardItemModel),
-view (new QTableView),
-tx_window (new QWidget),
-tx_layout (new QHBoxLayout),
-tx_label (new QLabel ("Account history count:")),
-tx_count (new QSpinBox),
-ledger (ledger_a),
-account (account_a),
-wallet (wallet_a)
+nano_qt::history::history (nano::ledger & ledger_a, nano::account const & account_a, nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, model (new QStandardItemModel)
+	, view (new QTableView)
+	, tx_window (new QWidget)
+	, tx_layout (new QHBoxLayout)
+	, tx_label (new QLabel ("Account history count:"))
+	, tx_count (new QSpinBox)
+	, ledger (ledger_a)
+	, account (account_a)
+	, wallet (wallet_a)
 { /*
 	tx_count->setRange (1, 256);
 	tx_layout->addWidget (tx_label);
@@ -513,9 +513,9 @@ namespace
 class short_text_visitor : public nano::block_visitor
 {
 public:
-	short_text_visitor (nano::transaction const & transaction_a, nano::ledger & ledger_a) :
-	transaction (transaction_a),
-	ledger (ledger_a)
+	short_text_visitor (nano::transaction const & transaction_a, nano::ledger & ledger_a)
+		: transaction (transaction_a)
+		, ledger (ledger_a)
 	{
 	}
 	void send_block (nano::send_block const & block_a)
@@ -612,19 +612,19 @@ void nano_qt::history::refresh ()
 	}
 }
 
-nano_qt::block_viewer::block_viewer (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-hash_label (new QLabel ("Hash:")),
-hash (new QLineEdit),
-block_label (new QLabel ("Block:")),
-block (new QPlainTextEdit),
-successor_label (new QLabel ("Successor:")),
-successor (new QLineEdit),
-retrieve (new QPushButton ("Retrieve")),
-rebroadcast (new QPushButton ("Rebroadcast")),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::block_viewer::block_viewer (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, hash_label (new QLabel ("Hash:"))
+	, hash (new QLineEdit)
+	, block_label (new QLabel ("Block:"))
+	, block (new QPlainTextEdit)
+	, successor_label (new QLabel ("Successor:"))
+	, successor (new QLineEdit)
+	, retrieve (new QPushButton ("Retrieve"))
+	, rebroadcast (new QPushButton ("Rebroadcast"))
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	layout->addWidget (hash_label);
 	layout->addWidget (hash);
@@ -712,19 +712,19 @@ void nano_qt::block_viewer::rebroadcast_action (nano::block_hash const & hash_a)
 	}
 }
 
-nano_qt::account_viewer::account_viewer (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-account_label (new QLabel ("Account:")),
-account_line (new QLineEdit),
-refresh (new QPushButton ("Refresh")),
-balance_window (new QWidget),
-balance_layout (new QHBoxLayout),
-balance_label (new QLabel),
-history (wallet_a.node.ledger, account, wallet_a),
-back (new QPushButton ("Back")),
-account (wallet_a.account),
-wallet (wallet_a)
+nano_qt::account_viewer::account_viewer (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, account_label (new QLabel ("Account:"))
+	, account_line (new QLineEdit)
+	, refresh (new QPushButton ("Refresh"))
+	, balance_window (new QWidget)
+	, balance_layout (new QHBoxLayout)
+	, balance_label (new QLabel)
+	, history (wallet_a.node.ledger, account, wallet_a)
+	, back (new QPushButton ("Back"))
+	, account (wallet_a.account)
+	, wallet (wallet_a)
 {
 	layout->addWidget (account_label);
 	layout->addWidget (account_line);
@@ -767,15 +767,15 @@ wallet (wallet_a)
 	});
 }
 
-nano_qt::stats_viewer::stats_viewer (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-refresh (new QPushButton ("Refresh")),
-clear (new QPushButton ("Clear Statistics")),
-model (new QStandardItemModel),
-view (new QTableView),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::stats_viewer::stats_viewer (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, refresh (new QPushButton ("Refresh"))
+	, clear (new QPushButton ("Clear Statistics"))
+	, model (new QStandardItemModel)
+	, view (new QTableView)
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	model->setHorizontalHeaderItem (0, new QStandardItem ("Last updated"));
 	model->setHorizontalHeaderItem (1, new QStandardItem ("Type"));
@@ -858,8 +858,8 @@ void nano_qt::stats_viewer::refresh_stats ()
 	}
 }
 
-nano_qt::status::status (nano_qt::wallet & wallet_a) :
-wallet (wallet_a)
+nano_qt::status::status (nano_qt::wallet & wallet_a)
+	: wallet (wallet_a)
 {
 	wallet.status->setToolTip ("Wallet status, block count (blocks downloaded)");
 	active.insert (nano_qt::status_types::nominal);
@@ -972,46 +972,46 @@ std::string nano_qt::status::color ()
 	return result;
 }
 
-nano_qt::wallet::wallet (QApplication & application_a, nano_qt::eventloop_processor & processor_a, nano::node & node_a, std::shared_ptr<nano::wallet> wallet_a, nano::account & account_a) :
-rendering_ratio (nano::Mxrb_ratio),
-node (node_a),
-wallet_m (wallet_a),
-account (account_a),
-processor (processor_a),
-history (node.ledger, account, *this),
-accounts (*this),
-self (*this, account_a),
-settings (*this),
-advanced (*this),
-block_creation (*this),
-block_entry (*this),
-block_viewer (*this),
-account_viewer (*this),
-stats_viewer (*this),
-import (*this),
-application (application_a),
-status (new QLabel),
-main_stack (new QStackedWidget),
-client_window (new QWidget),
-client_layout (new QVBoxLayout),
-entry_window (new QWidget),
-entry_window_layout (new QVBoxLayout),
-separator (new QFrame),
-account_history_label (new QLabel ("Account history:")),
-send_blocks (new QPushButton ("Send")),
-settings_button (new QPushButton ("Settings")),
-accounts_button (new QPushButton ("Accounts")),
-show_advanced (new QPushButton ("Advanced")),
-send_blocks_window (new QWidget),
-send_blocks_layout (new QVBoxLayout),
-send_account_label (new QLabel ("Destination account:")),
-send_account (new QLineEdit),
-send_count_label (new QLabel ("Amount:")),
-send_count (new QLineEdit),
-send_blocks_send (new QPushButton ("Send")),
-send_blocks_back (new QPushButton ("Back")),
-active_status (*this),
-needs_deterministic_restore (false)
+nano_qt::wallet::wallet (QApplication & application_a, nano_qt::eventloop_processor & processor_a, nano::node & node_a, std::shared_ptr<nano::wallet> wallet_a, nano::account & account_a)
+	: rendering_ratio (nano::Mxrb_ratio)
+	, node (node_a)
+	, wallet_m (wallet_a)
+	, account (account_a)
+	, processor (processor_a)
+	, history (node.ledger, account, *this)
+	, accounts (*this)
+	, self (*this, account_a)
+	, settings (*this)
+	, advanced (*this)
+	, block_creation (*this)
+	, block_entry (*this)
+	, block_viewer (*this)
+	, account_viewer (*this)
+	, stats_viewer (*this)
+	, import (*this)
+	, application (application_a)
+	, status (new QLabel)
+	, main_stack (new QStackedWidget)
+	, client_window (new QWidget)
+	, client_layout (new QVBoxLayout)
+	, entry_window (new QWidget)
+	, entry_window_layout (new QVBoxLayout)
+	, separator (new QFrame)
+	, account_history_label (new QLabel ("Account history:"))
+	, send_blocks (new QPushButton ("Send"))
+	, settings_button (new QPushButton ("Settings"))
+	, accounts_button (new QPushButton ("Accounts"))
+	, show_advanced (new QPushButton ("Advanced"))
+	, send_blocks_window (new QWidget)
+	, send_blocks_layout (new QVBoxLayout)
+	, send_account_label (new QLabel ("Destination account:"))
+	, send_account (new QLineEdit)
+	, send_count_label (new QLabel ("Amount:"))
+	, send_count (new QLineEdit)
+	, send_blocks_send (new QPushButton ("Send"))
+	, send_blocks_back (new QPushButton ("Back"))
+	, active_status (*this)
+	, needs_deterministic_restore (false)
 {
 	update_connected ();
 	empty_password ();
@@ -1460,22 +1460,22 @@ void nano_qt::wallet::pop_main_stack ()
 	main_stack->removeWidget (main_stack->currentWidget ());
 }
 
-nano_qt::settings::settings (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-password (new QLineEdit),
-lock_toggle (new QPushButton ("Unlock")),
-sep1 (new QFrame),
-new_password (new QLineEdit),
-retype_password (new QLineEdit),
-change (new QPushButton ("Set/Change password")),
-sep2 (new QFrame),
-representative (new QLabel ("Account representative:")),
-current_representative (new QLabel),
-new_representative (new QLineEdit),
-change_rep (new QPushButton ("Change representative")),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::settings::settings (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, password (new QLineEdit)
+	, lock_toggle (new QPushButton ("Unlock"))
+	, sep1 (new QFrame)
+	, new_password (new QLineEdit)
+	, retype_password (new QLineEdit)
+	, change (new QPushButton ("Set/Change password"))
+	, sep2 (new QFrame)
+	, representative (new QLabel ("Account representative:"))
+	, current_representative (new QLabel)
+	, new_representative (new QLineEdit)
+	, change_rep (new QPushButton ("Change representative"))
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	password->setPlaceholderText ("Password");
 	password->setEchoMode (QLineEdit::EchoMode::Password);
@@ -1709,46 +1709,46 @@ void nano_qt::settings::update_locked (bool invalid, bool vulnerable)
 	}
 }
 
-nano_qt::advanced_actions::advanced_actions (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-show_ledger (new QPushButton ("Ledger")),
-show_peers (new QPushButton ("Peers")),
-search_for_receivables (new QPushButton ("Search for receivables")),
-bootstrap (new QPushButton ("Initiate bootstrap")),
-wallet_refresh (new QPushButton ("Refresh Wallet")),
-create_block (new QPushButton ("Create Block")),
-enter_block (new QPushButton ("Enter Block")),
-block_viewer (new QPushButton ("Block Viewer")),
-account_viewer (new QPushButton ("Account Viewer")),
-stats_viewer (new QPushButton ("Node Statistics")),
-scale_window (new QWidget),
-scale_layout (new QHBoxLayout),
-scale_label (new QLabel ("Scale:")),
-ratio_group (new QButtonGroup),
-mnano_unit (new QRadioButton ("Mnano")),
-knano_unit (new QRadioButton ("knano")),
-nano_unit (new QRadioButton ("nano")),
-raw_unit (new QRadioButton ("raw")),
-back (new QPushButton ("Back")),
-ledger_window (new QWidget),
-ledger_layout (new QVBoxLayout),
-ledger_model (new QStandardItemModel),
-ledger_view (new QTableView),
-ledger_refresh (new QPushButton ("Refresh")),
-ledger_back (new QPushButton ("Back")),
-peers_window (new QWidget),
-peers_layout (new QVBoxLayout),
-peers_model (new QStandardItemModel),
-peers_view (new QTableView),
-peer_summary_layout (new QHBoxLayout),
-bootstrap_label (new QLabel ("IPV6:port \"::ffff:192.168.0.1:7075\"")),
-peer_count_label (new QLabel ("")),
-bootstrap_line (new QLineEdit),
-peers_bootstrap (new QPushButton ("Initiate Bootstrap")),
-peers_refresh (new QPushButton ("Refresh")),
-peers_back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::advanced_actions::advanced_actions (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, show_ledger (new QPushButton ("Ledger"))
+	, show_peers (new QPushButton ("Peers"))
+	, search_for_receivables (new QPushButton ("Search for receivables"))
+	, bootstrap (new QPushButton ("Initiate bootstrap"))
+	, wallet_refresh (new QPushButton ("Refresh Wallet"))
+	, create_block (new QPushButton ("Create Block"))
+	, enter_block (new QPushButton ("Enter Block"))
+	, block_viewer (new QPushButton ("Block Viewer"))
+	, account_viewer (new QPushButton ("Account Viewer"))
+	, stats_viewer (new QPushButton ("Node Statistics"))
+	, scale_window (new QWidget)
+	, scale_layout (new QHBoxLayout)
+	, scale_label (new QLabel ("Scale:"))
+	, ratio_group (new QButtonGroup)
+	, mnano_unit (new QRadioButton ("Mnano"))
+	, knano_unit (new QRadioButton ("knano"))
+	, nano_unit (new QRadioButton ("nano"))
+	, raw_unit (new QRadioButton ("raw"))
+	, back (new QPushButton ("Back"))
+	, ledger_window (new QWidget)
+	, ledger_layout (new QVBoxLayout)
+	, ledger_model (new QStandardItemModel)
+	, ledger_view (new QTableView)
+	, ledger_refresh (new QPushButton ("Refresh"))
+	, ledger_back (new QPushButton ("Back"))
+	, peers_window (new QWidget)
+	, peers_layout (new QVBoxLayout)
+	, peers_model (new QStandardItemModel)
+	, peers_view (new QTableView)
+	, peer_summary_layout (new QHBoxLayout)
+	, bootstrap_label (new QLabel ("IPV6:port \"::ffff:192.168.0.1:7075\""))
+	, peer_count_label (new QLabel (""))
+	, bootstrap_line (new QLineEdit)
+	, peers_bootstrap (new QPushButton ("Initiate Bootstrap"))
+	, peers_refresh (new QPushButton ("Refresh"))
+	, peers_back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	ratio_group->addButton (mnano_unit);
 	ratio_group->addButton (knano_unit);
@@ -1977,14 +1977,14 @@ void nano_qt::advanced_actions::refresh_stats ()
 	wallet.stats_viewer.refresh_stats ();
 }
 
-nano_qt::block_entry::block_entry (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-block (new QPlainTextEdit),
-status (new QLabel),
-process (new QPushButton ("Process")),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::block_entry::block_entry (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, block (new QPlainTextEdit)
+	, status (new QLabel)
+	, process (new QPushButton ("Process"))
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	layout->addWidget (block);
 	layout->addWidget (status);
@@ -2022,30 +2022,30 @@ wallet (wallet_a)
 	});
 }
 
-nano_qt::block_creation::block_creation (nano_qt::wallet & wallet_a) :
-window (new QWidget),
-layout (new QVBoxLayout),
-group (new QButtonGroup),
-button_layout (new QHBoxLayout),
-send (new QRadioButton ("Send")),
-receive (new QRadioButton ("Receive")),
-change (new QRadioButton ("Change")),
-open (new QRadioButton ("Open")),
-account_label (new QLabel ("Account:")),
-account (new QLineEdit),
-source_label (new QLabel ("Source:")),
-source (new QLineEdit),
-amount_label (new QLabel ("Amount:")),
-amount (new QLineEdit),
-destination_label (new QLabel ("Destination:")),
-destination (new QLineEdit),
-representative_label (new QLabel ("Representative:")),
-representative (new QLineEdit),
-block (new QPlainTextEdit),
-status (new QLabel),
-create (new QPushButton ("Create")),
-back (new QPushButton ("Back")),
-wallet (wallet_a)
+nano_qt::block_creation::block_creation (nano_qt::wallet & wallet_a)
+	: window (new QWidget)
+	, layout (new QVBoxLayout)
+	, group (new QButtonGroup)
+	, button_layout (new QHBoxLayout)
+	, send (new QRadioButton ("Send"))
+	, receive (new QRadioButton ("Receive"))
+	, change (new QRadioButton ("Change"))
+	, open (new QRadioButton ("Open"))
+	, account_label (new QLabel ("Account:"))
+	, account (new QLineEdit)
+	, source_label (new QLabel ("Source:"))
+	, source (new QLineEdit)
+	, amount_label (new QLabel ("Amount:"))
+	, amount (new QLineEdit)
+	, destination_label (new QLabel ("Destination:"))
+	, destination (new QLineEdit)
+	, representative_label (new QLabel ("Representative:"))
+	, representative (new QLineEdit)
+	, block (new QPlainTextEdit)
+	, status (new QLabel)
+	, create (new QPushButton ("Create"))
+	, back (new QPushButton ("Back"))
+	, wallet (wallet_a)
 {
 	group->addButton (send);
 	group->addButton (receive);

@@ -22,8 +22,10 @@ class opencl_work;
 class work_item final
 {
 public:
-	work_item (nano::root const & item_a, std::function<void(boost::optional<uint64_t> const &)> const & callback_a, uint64_t difficulty_a) :
-	item (item_a), callback (callback_a), difficulty (difficulty_a)
+	work_item (nano::root const & item_a, std::function<void(boost::optional<uint64_t> const &)> const & callback_a, uint64_t difficulty_a)
+		: item (item_a)
+		, callback (callback_a)
+		, difficulty (difficulty_a)
 	{
 	}
 

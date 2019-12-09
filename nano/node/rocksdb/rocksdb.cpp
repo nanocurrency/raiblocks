@@ -29,8 +29,8 @@ size_t rocksdb_val::size () const
 }
 
 template <>
-rocksdb_val::db_val (size_t size_a, void * data_a) :
-value (static_cast<const char *> (data_a), size_a)
+rocksdb_val::db_val (size_t size_a, void * data_a)
+	: value (static_cast<const char *> (data_a), size_a)
 {
 }
 
@@ -41,9 +41,9 @@ void rocksdb_val::convert_buffer_to_value ()
 }
 }
 
-nano::rocksdb_store::rocksdb_store (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::rocksdb_config const & rocksdb_config_a, bool open_read_only_a) :
-logger (logger_a),
-rocksdb_config (rocksdb_config_a)
+nano::rocksdb_store::rocksdb_store (nano::logger_mt & logger_a, boost::filesystem::path const & path_a, nano::rocksdb_config const & rocksdb_config_a, bool open_read_only_a)
+	: logger (logger_a)
+	, rocksdb_config (rocksdb_config_a)
 {
 	boost::system::error_code error_mkdir, error_chmod;
 	boost::filesystem::create_directories (path_a, error_mkdir);

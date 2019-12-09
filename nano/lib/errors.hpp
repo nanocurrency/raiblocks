@@ -199,7 +199,7 @@ namespace std
 {
 template <>
 struct is_error_code_enum<boost::system::errc::errc_t>
-: public std::true_type
+	: public std::true_type
 {
 };
 

@@ -4,10 +4,10 @@
 #include <nano/lib/threading.hpp>
 #include <nano/node/signatures.hpp>
 
-nano::signature_checker::signature_checker (unsigned num_threads) :
-thread_pool (num_threads),
-single_threaded (num_threads == 0),
-num_threads (num_threads)
+nano::signature_checker::signature_checker (unsigned num_threads)
+	: thread_pool (num_threads)
+	, single_threaded (num_threads == 0)
+	, num_threads (num_threads)
 {
 	if (!single_threaded)
 	{

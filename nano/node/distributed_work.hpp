@@ -28,10 +28,10 @@ class node;
 class work_peer_request final
 {
 public:
-	work_peer_request (boost::asio::io_context & io_ctx_a, boost::asio::ip::address address_a, uint16_t port_a) :
-	address (address_a),
-	port (port_a),
-	socket (io_ctx_a)
+	work_peer_request (boost::asio::io_context & io_ctx_a, boost::asio::ip::address address_a, uint16_t port_a)
+		: address (address_a)
+		, port (port_a)
+		, socket (io_ctx_a)
 	{
 	}
 	std::shared_ptr<request_type> get_prepared_json_request (std::string const &) const;

@@ -245,7 +245,7 @@ TEST (websocket, confirmation)
 		// This will expect two results: the acknowledgement of the subscription
 		// and then the block confirmation message
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "confirmation", "ack": true})json", true, true);
+			R"json({"action": "subscribe", "topic": "confirmation", "ack": true})json", true, true);
 		ASSERT_TRUE (response);
 		boost::property_tree::ptree event;
 		std::stringstream stream;
@@ -289,7 +289,7 @@ TEST (websocket, confirmation)
 	std::atomic<bool> unsubscribe_ack_received{ false };
 	std::thread client_thread_2 ([&unsubscribe_ack_received, config]() {
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "confirmation", "ack": true})json", true, true);
+			R"json({"action": "subscribe", "topic": "confirmation", "ack": true})json", true, true);
 		ASSERT_TRUE (response);
 		boost::property_tree::ptree event;
 		std::stringstream stream;
@@ -299,7 +299,7 @@ TEST (websocket, confirmation)
 
 		// Unsubscribe action, expects an acknowledge but no response follows
 		websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "unsubscribe", "topic": "confirmation", "ack": true})json", true, true, 1s);
+			R"json({"action": "unsubscribe", "topic": "confirmation", "ack": true})json", true, true, 1s);
 		unsubscribe_ack_received = true;
 	});
 
@@ -351,7 +351,7 @@ TEST (websocket, stopped_election)
 	ASSERT_FALSE (node1->websocket_server->any_subscriber (nano::websocket::topic::confirmation));
 	std::thread client_thread ([&client_thread_finished, config]() {
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "stopped_election", "ack": "true"})json", true, true, 5s);
+			R"json({"action": "subscribe", "topic": "stopped_election", "ack": "true"})json", true, true, 5s);
 
 		ASSERT_TRUE (response);
 		boost::property_tree::ptree event;
@@ -412,7 +412,7 @@ TEST (websocket, confirmation_options)
 	std::thread client_thread ([&client_thread_finished, config]() {
 		// Subscribe initially with a specific invalid account
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "confirmation", "ack": "true", "options": {"confirmation_type": "active_quorum", "accounts": ["xrb_invalid"]}})json", true, true, 1s);
+			R"json({"action": "subscribe", "topic": "confirmation", "ack": "true", "options": {"confirmation_type": "active_quorum", "accounts": ["xrb_invalid"]}})json", true, true, 1s);
 
 		ASSERT_FALSE (response);
 		client_thread_finished = true;
@@ -451,7 +451,7 @@ TEST (websocket, confirmation_options)
 	std::thread client_thread_2 ([&client_thread_2_finished, config]() {
 		// Re-subscribe with options for all local wallet accounts
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "confirmation", "ack": "true", "options": {"confirmation_type": "active_quorum", "all_local_accounts": "true", "include_election_info": "true"}})json", true, true);
+			R"json({"action": "subscribe", "topic": "confirmation", "ack": "true", "options": {"confirmation_type": "active_quorum", "all_local_accounts": "true", "include_election_info": "true"}})json", true, true);
 
 		ASSERT_TRUE (response);
 		boost::property_tree::ptree event;
@@ -512,7 +512,7 @@ TEST (websocket, confirmation_options)
 	std::atomic<bool> client_thread_3_finished{ false };
 	std::thread client_thread_3 ([&client_thread_3_finished, config]() {
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "confirmation", "ack": "true", "options": {"confirmation_type": "active_quorum", "all_local_accounts": "true"}})json", true, true, 1s);
+			R"json({"action": "subscribe", "topic": "confirmation", "ack": "true", "options": {"confirmation_type": "active_quorum", "all_local_accounts": "true"}})json", true, true, 1s);
 
 		ASSERT_FALSE (response);
 		client_thread_3_finished = true;
@@ -564,7 +564,7 @@ TEST (websocket, vote)
 		// This will expect two results: the acknowledgement of the subscription
 		// and then the vote message
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "vote", "ack": true})json", true, true);
+			R"json({"action": "subscribe", "topic": "vote", "ack": true})json", true, true);
 
 		ASSERT_TRUE (response);
 		boost::property_tree::ptree event;
@@ -624,8 +624,8 @@ TEST (websocket, vote_options)
 	std::thread client_thread ([&client_thread_finished, config]() {
 		std::ostringstream data;
 		data << R"json({"action": "subscribe", "topic": "vote", "ack": true, "options": {"representatives": [")json"
-		     << nano::test_genesis_key.pub.to_account ()
-		     << R"json("]}})json";
+			 << nano::test_genesis_key.pub.to_account ()
+			 << R"json("]}})json";
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port), data.str (), true, true);
 
 		ASSERT_TRUE (response);
@@ -670,7 +670,7 @@ TEST (websocket, vote_options)
 	std::atomic<bool> client_thread_2_finished{ false };
 	std::thread client_thread_2 ([&client_thread_2_finished, config]() {
 		auto response = websocket_test_call ("::1", std::to_string (config.websocket_config.port),
-		R"json({"action": "subscribe", "topic": "vote", "ack": true, "options": {"representatives": ["xrb_invalid"]}})json", true, true, 1s);
+			R"json({"action": "subscribe", "topic": "vote", "ack": true, "options": {"representatives": ["xrb_invalid"]}})json", true, true, 1s);
 
 		// No response expected given the filter
 		ASSERT_FALSE (response);

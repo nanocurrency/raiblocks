@@ -3,9 +3,9 @@
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/websocketconfig.hpp>
 
-nano::websocket::config::config () :
-port (network_constants.default_websocket_port),
-address (boost::asio::ip::address_v6::loopback ().to_string ())
+nano::websocket::config::config ()
+	: port (network_constants.default_websocket_port)
+	, address (boost::asio::ip::address_v6::loopback ().to_string ())
 {
 }
 

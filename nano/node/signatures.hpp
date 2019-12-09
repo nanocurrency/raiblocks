@@ -12,8 +12,13 @@ namespace nano
 class signature_check_set final
 {
 public:
-	signature_check_set (size_t size, unsigned char const ** messages, size_t * message_lengths, unsigned char const ** pub_keys, unsigned char const ** signatures, int * verifications) :
-	size (size), messages (messages), message_lengths (message_lengths), pub_keys (pub_keys), signatures (signatures), verifications (verifications)
+	signature_check_set (size_t size, unsigned char const ** messages, size_t * message_lengths, unsigned char const ** pub_keys, unsigned char const ** signatures, int * verifications)
+		: size (size)
+		, messages (messages)
+		, message_lengths (message_lengths)
+		, pub_keys (pub_keys)
+		, signatures (signatures)
+		, verifications (verifications)
 	{
 	}
 
@@ -38,8 +43,9 @@ public:
 private:
 	struct Task final
 	{
-		Task (nano::signature_check_set & check, size_t pending) :
-		check (check), pending (pending)
+		Task (nano::signature_check_set & check, size_t pending)
+			: check (check)
+			, pending (pending)
 		{
 		}
 		~Task ()

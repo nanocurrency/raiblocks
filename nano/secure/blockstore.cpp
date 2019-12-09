@@ -3,14 +3,14 @@
 
 #include <boost/endian/conversion.hpp>
 
-nano::block_sideband::block_sideband (nano::block_type type_a, nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t height_a, uint64_t timestamp_a, nano::epoch epoch_a) :
-type (type_a),
-successor (successor_a),
-account (account_a),
-balance (balance_a),
-height (height_a),
-timestamp (timestamp_a),
-epoch (epoch_a)
+nano::block_sideband::block_sideband (nano::block_type type_a, nano::account const & account_a, nano::block_hash const & successor_a, nano::amount const & balance_a, uint64_t height_a, uint64_t timestamp_a, nano::epoch epoch_a)
+	: type (type_a)
+	, successor (successor_a)
+	, account (account_a)
+	, balance (balance_a)
+	, height (height_a)
+	, timestamp (timestamp_a)
+	, epoch (epoch_a)
 {
 }
 
@@ -98,10 +98,10 @@ bool nano::block_sideband::deserialize (nano::stream & stream_a)
 	return result;
 }
 
-nano::summation_visitor::summation_visitor (nano::transaction const & transaction_a, nano::block_store const & store_a, bool is_v14_upgrade_a) :
-transaction (transaction_a),
-store (store_a),
-is_v14_upgrade (is_v14_upgrade_a)
+nano::summation_visitor::summation_visitor (nano::transaction const & transaction_a, nano::block_store const & store_a, bool is_v14_upgrade_a)
+	: transaction (transaction_a)
+	, store (store_a)
+	, is_v14_upgrade (is_v14_upgrade_a)
 {
 }
 
@@ -341,10 +341,10 @@ std::shared_ptr<nano::block> nano::summation_visitor::block_get (nano::transacti
 	return is_v14_upgrade ? store.block_get_v14 (transaction, hash_a) : store.block_get (transaction, hash_a);
 }
 
-nano::representative_visitor::representative_visitor (nano::transaction const & transaction_a, nano::block_store & store_a) :
-transaction (transaction_a),
-store (store_a),
-result (0)
+nano::representative_visitor::representative_visitor (nano::transaction const & transaction_a, nano::block_store & store_a)
+	: transaction (transaction_a)
+	, store (store_a)
+	, result (0)
 {
 }
 
@@ -384,8 +384,8 @@ void nano::representative_visitor::state_block (nano::state_block const & block_
 	result = block_a.hash ();
 }
 
-nano::read_transaction::read_transaction (std::unique_ptr<nano::read_transaction_impl> read_transaction_impl) :
-impl (std::move (read_transaction_impl))
+nano::read_transaction::read_transaction (std::unique_ptr<nano::read_transaction_impl> read_transaction_impl)
+	: impl (std::move (read_transaction_impl))
 {
 }
 
@@ -410,8 +410,8 @@ void nano::read_transaction::refresh () const
 	renew ();
 }
 
-nano::write_transaction::write_transaction (std::unique_ptr<nano::write_transaction_impl> write_transaction_impl) :
-impl (std::move (write_transaction_impl))
+nano::write_transaction::write_transaction (std::unique_ptr<nano::write_transaction_impl> write_transaction_impl)
+	: impl (std::move (write_transaction_impl))
 {
 	/*
 	 * For IO threads, we do not want them to block on creating write transactions.

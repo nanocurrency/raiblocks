@@ -33,11 +33,11 @@ uint64_t nano::work_value (nano::root const & root_a, uint64_t work_a)
 	return result;
 }
 
-nano::work_pool::work_pool (unsigned max_threads_a, std::chrono::nanoseconds pow_rate_limiter_a, std::function<boost::optional<uint64_t> (nano::root const &, uint64_t, std::atomic<int> &)> opencl_a) :
-ticket (0),
-done (false),
-pow_rate_limiter (pow_rate_limiter_a),
-opencl (opencl_a)
+nano::work_pool::work_pool (unsigned max_threads_a, std::chrono::nanoseconds pow_rate_limiter_a, std::function<boost::optional<uint64_t> (nano::root const &, uint64_t, std::atomic<int> &)> opencl_a)
+	: ticket (0)
+	, done (false)
+	, pow_rate_limiter (pow_rate_limiter_a)
+	, opencl (opencl_a)
 {
 	static_assert (ATOMIC_INT_LOCK_FREE == 2, "Atomic int needed");
 	boost::thread::attributes attrs;

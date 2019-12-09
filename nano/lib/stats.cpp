@@ -157,8 +157,8 @@ public:
 	std::ofstream log;
 	std::string filename;
 
-	explicit file_writer (std::string const & filename) :
-	filename (filename)
+	explicit file_writer (std::string const & filename)
+		: filename (filename)
 	{
 		log.open (filename.c_str (), std::ofstream::out);
 	}
@@ -191,8 +191,8 @@ public:
 	}
 };
 
-nano::stat::stat (nano::stat_config config) :
-config (config)
+nano::stat::stat (nano::stat_config config)
+	: config (config)
 {
 }
 

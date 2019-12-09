@@ -29,8 +29,8 @@
 
 namespace nano
 {
-seq_con_info_composite::seq_con_info_composite (const std::string & name) :
-name (name)
+seq_con_info_composite::seq_con_info_composite (const std::string & name)
+	: name (name)
 {
 }
 
@@ -54,8 +54,8 @@ const std::string & seq_con_info_composite::get_name () const
 	return name;
 }
 
-seq_con_info_leaf::seq_con_info_leaf (const seq_con_info & info) :
-info (info)
+seq_con_info_leaf::seq_con_info_leaf (const seq_con_info & info)
+	: info (info)
 {
 }
 

@@ -24,12 +24,12 @@ bool block_confirmed (nano::node & node, nano::transaction & transaction, nano::
 const char * epoch_as_string (nano::epoch);
 }
 
-nano::json_handler::json_handler (nano::node & node_a, nano::node_rpc_config const & node_rpc_config_a, std::string const & body_a, std::function<void(std::string const &)> const & response_a, std::function<void()> stop_callback_a) :
-body (body_a),
-node (node_a),
-response (response_a),
-stop_callback (stop_callback_a),
-node_rpc_config (node_rpc_config_a)
+nano::json_handler::json_handler (nano::node & node_a, nano::node_rpc_config const & node_rpc_config_a, std::string const & body_a, std::function<void(std::string const &)> const & response_a, std::function<void()> stop_callback_a)
+	: body (body_a)
+	, node (node_a)
+	, response (response_a)
+	, stop_callback (stop_callback_a)
+	, node_rpc_config (node_rpc_config_a)
 {
 }
 
@@ -1441,13 +1441,13 @@ void nano::json_handler::block_create ()
 				if (previous_text.is_initialized () && !representative.is_zero () && (!link.is_zero () || link_text.is_initialized ()))
 				{
 					block_l = builder_l.state ()
-					          .account (pub)
-					          .previous (previous)
-					          .representative (representative)
-					          .balance (balance)
-					          .link (link)
-					          .sign (prv, pub)
-					          .build (ec_build);
+								  .account (pub)
+								  .previous (previous)
+								  .representative (representative)
+								  .balance (balance)
+								  .link (link)
+								  .sign (prv, pub)
+								  .build (ec_build);
 					if (previous.is_zero ())
 					{
 						root_l = pub;
@@ -1467,11 +1467,11 @@ void nano::json_handler::block_create ()
 				if (representative != 0 && source != 0)
 				{
 					block_l = builder_l.open ()
-					          .account (pub)
-					          .source (source)
-					          .representative (representative)
-					          .sign (prv, pub)
-					          .build (ec_build);
+								  .account (pub)
+								  .source (source)
+								  .representative (representative)
+								  .sign (prv, pub)
+								  .build (ec_build);
 					root_l = pub;
 				}
 				else
@@ -1484,10 +1484,10 @@ void nano::json_handler::block_create ()
 				if (source != 0 && previous != 0)
 				{
 					block_l = builder_l.receive ()
-					          .previous (previous)
-					          .source (source)
-					          .sign (prv, pub)
-					          .build (ec_build);
+								  .previous (previous)
+								  .source (source)
+								  .sign (prv, pub)
+								  .build (ec_build);
 					root_l = previous;
 				}
 				else
@@ -1500,10 +1500,10 @@ void nano::json_handler::block_create ()
 				if (representative != 0 && previous != 0)
 				{
 					block_l = builder_l.change ()
-					          .previous (previous)
-					          .representative (representative)
-					          .sign (prv, pub)
-					          .build (ec_build);
+								  .previous (previous)
+								  .representative (representative)
+								  .sign (prv, pub)
+								  .build (ec_build);
 					root_l = previous;
 				}
 				else
@@ -1518,11 +1518,11 @@ void nano::json_handler::block_create ()
 					if (balance.number () >= amount.number ())
 					{
 						block_l = builder_l.send ()
-						          .previous (previous)
-						          .destination (destination)
-						          .balance (balance.number () - amount.number ())
-						          .sign (prv, pub)
-						          .build (ec_build);
+									  .previous (previous)
+									  .destination (destination)
+									  .balance (balance.number () - amount.number ())
+									  .sign (prv, pub)
+									  .build (ec_build);
 						root_l = previous;
 					}
 					else
@@ -2064,11 +2064,11 @@ void epoch_upgrader (std::shared_ptr<nano::node> node_a, nano::private_key const
 	{
 	};
 	boost::multi_index_container<
-	account_upgrade_item,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::tag<modified_tag>, boost::multi_index::member<account_upgrade_item, uint64_t, &account_upgrade_item::modified>, std::greater<uint64_t>>,
-	boost::multi_index::hashed_unique<boost::multi_index::tag<account_tag>, boost::multi_index::member<account_upgrade_item, nano::account, &account_upgrade_item::account>>>>
-	accounts_list;
+		account_upgrade_item,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::tag<modified_tag>, boost::multi_index::member<account_upgrade_item, uint64_t, &account_upgrade_item::modified>, std::greater<uint64_t>>,
+			boost::multi_index::hashed_unique<boost::multi_index::tag<account_tag>, boost::multi_index::member<account_upgrade_item, nano::account, &account_upgrade_item::account>>>>
+		accounts_list;
 
 	bool finished_upgrade (false);
 
@@ -2103,14 +2103,14 @@ void epoch_upgrader (std::shared_ptr<nano::node> node_a, nano::private_key const
 				if (!node_a->store.account_get (transaction, i->account, info) && info.epoch () < epoch_a)
 				{
 					auto epoch = builder.state ()
-					             .account (i->account)
-					             .previous (info.head)
-					             .representative (info.representative)
-					             .balance (info.balance)
-					             .link (link)
-					             .sign (raw_key, signer)
-					             .work (node_a->work_generate_blocking (info.head).value_or (0))
-					             .build ();
+									 .account (i->account)
+									 .previous (info.head)
+									 .representative (info.representative)
+									 .balance (info.balance)
+									 .link (link)
+									 .sign (raw_key, signer)
+									 .work (node_a->work_generate_blocking (info.head).value_or (0))
+									 .build ();
 					bool valid_signature (!nano::validate_message (signer, epoch->hash (), epoch->block_signature ()));
 					bool valid_work (!nano::work_validate (*epoch.get ()));
 					nano::process_result result (nano::process_result::old);
@@ -2162,14 +2162,14 @@ void epoch_upgrader (std::shared_ptr<nano::node> node_a, nano::private_key const
 					{
 						release_assert (nano::epochs::is_sequential (info.epoch, epoch_a));
 						auto epoch = builder.state ()
-						             .account (key.account)
-						             .previous (0)
-						             .representative (0)
-						             .balance (0)
-						             .link (link)
-						             .sign (raw_key, signer)
-						             .work (node_a->work_generate_blocking (key.account).value_or (0))
-						             .build ();
+										 .account (key.account)
+										 .previous (0)
+										 .representative (0)
+										 .balance (0)
+										 .link (link)
+										 .sign (raw_key, signer)
+										 .work (node_a->work_generate_blocking (key.account).value_or (0))
+										 .build ();
 						bool valid_signature (!nano::validate_message (signer, epoch->hash (), epoch->block_signature ()));
 						bool valid_work (!nano::work_validate (*epoch.get ()));
 						nano::process_result result (nano::process_result::old);
@@ -2312,13 +2312,13 @@ namespace
 class history_visitor : public nano::block_visitor
 {
 public:
-	history_visitor (nano::json_handler & handler_a, bool raw_a, nano::transaction & transaction_a, boost::property_tree::ptree & tree_a, nano::block_hash const & hash_a, std::vector<nano::public_key> const & accounts_filter_a) :
-	handler (handler_a),
-	raw (raw_a),
-	transaction (transaction_a),
-	tree (tree_a),
-	hash (hash_a),
-	accounts_filter (accounts_filter_a)
+	history_visitor (nano::json_handler & handler_a, bool raw_a, nano::transaction & transaction_a, boost::property_tree::ptree & tree_a, nano::block_hash const & hash_a, std::vector<nano::public_key> const & accounts_filter_a)
+		: handler (handler_a)
+		, raw (raw_a)
+		, transaction (transaction_a)
+		, tree (tree_a)
+		, hash (hash_a)
+		, accounts_filter (accounts_filter_a)
 	{
 	}
 	virtual ~history_visitor () = default;

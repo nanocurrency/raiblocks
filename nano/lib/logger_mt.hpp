@@ -73,8 +73,8 @@ public:
 	/**
 	 * @param min_log_delta_a The minimum time between successive output
 	 */
-	explicit logger_mt (std::chrono::milliseconds const & min_log_delta_a) :
-	min_log_delta (min_log_delta_a)
+	explicit logger_mt (std::chrono::milliseconds const & min_log_delta_a)
+		: min_log_delta (min_log_delta_a)
 	{
 	}
 

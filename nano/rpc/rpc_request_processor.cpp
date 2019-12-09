@@ -5,13 +5,13 @@
 
 #include <boost/endian/conversion.hpp>
 
-nano::rpc_request_processor::rpc_request_processor (boost::asio::io_context & io_ctx, nano::rpc_config & rpc_config) :
-ipc_address (rpc_config.rpc_process.ipc_address),
-ipc_port (rpc_config.rpc_process.ipc_port),
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::rpc_request_processor);
-	this->run ();
-})
+nano::rpc_request_processor::rpc_request_processor (boost::asio::io_context & io_ctx, nano::rpc_config & rpc_config)
+	: ipc_address (rpc_config.rpc_process.ipc_address)
+	, ipc_port (rpc_config.rpc_process.ipc_port)
+	, thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::rpc_request_processor);
+		this->run ();
+	})
 {
 	nano::lock_guard<std::mutex> lk (this->request_mutex);
 	this->connections.reserve (rpc_config.rpc_process.num_ipc_connections);

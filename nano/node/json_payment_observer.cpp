@@ -5,11 +5,11 @@
 #include <nano/node/node.hpp>
 #include <nano/node/payment_observer_processor.hpp>
 
-nano::json_payment_observer::json_payment_observer (nano::node & node_a, std::function<void(std::string const &)> const & response_a, nano::account const & account_a, nano::amount const & amount_a) :
-node (node_a),
-account (account_a),
-amount (amount_a),
-response (response_a)
+nano::json_payment_observer::json_payment_observer (nano::node & node_a, std::function<void(std::string const &)> const & response_a, nano::account const & account_a, nano::amount const & amount_a)
+	: node (node_a)
+	, account (account_a)
+	, amount (amount_a)
+	, response (response_a)
 {
 	completed.clear ();
 }

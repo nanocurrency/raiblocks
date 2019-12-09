@@ -50,7 +50,7 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 		nano::work_pool opencl_work (config.node.work_threads, config.node.pow_sleep_interval, opencl ? [&opencl](nano::root const & root_a, uint64_t difficulty_a, std::atomic<int> & ticket_a) {
 			return opencl->generate_work (root_a, difficulty_a, ticket_a);
 		}
-		                                                                                              : std::function<boost::optional<uint64_t> (nano::root const &, uint64_t, std::atomic<int> &)> (nullptr));
+																									  : std::function<boost::optional<uint64_t> (nano::root const &, uint64_t, std::atomic<int> &)> (nullptr));
 		nano::alarm alarm (io_ctx);
 		try
 		{
@@ -59,9 +59,9 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 			{
 				auto network_label = node->network_params.network.get_current_network_as_string ();
 				std::cout << "Network: " << network_label << ", version: " << NANO_VERSION_STRING << "\n"
-				          << "Path: " << node->application_path.string () << "\n"
-				          << "Build Info: " << BUILD_INFO << "\n"
-				          << "Database backend: " << node->store.vendor_get () << std::endl;
+						  << "Path: " << node->application_path.string () << "\n"
+						  << "Build Info: " << BUILD_INFO << "\n"
+						  << "Database backend: " << node->store.vendor_get () << std::endl;
 
 				node->start ();
 				nano::ipc::ipc_server ipc_server (*node, config.rpc);

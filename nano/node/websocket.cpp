@@ -12,13 +12,13 @@
 #include <algorithm>
 #include <chrono>
 
-nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a) :
-wallets (wallets_a)
+nano::websocket::confirmation_options::confirmation_options (nano::wallets & wallets_a)
+	: wallets (wallets_a)
 {
 }
 
-nano::websocket::confirmation_options::confirmation_options (boost::property_tree::ptree const & options_a, nano::wallets & wallets_a, nano::logger_mt & logger_a) :
-wallets (wallets_a)
+nano::websocket::confirmation_options::confirmation_options (boost::property_tree::ptree const & options_a, nano::wallets & wallets_a, nano::logger_mt & logger_a)
+	: wallets (wallets_a)
 {
 	// Non-account filtering options
 	include_block = options_a.get<bool> ("include_block", true);
@@ -173,8 +173,10 @@ bool nano::websocket::vote_options::should_filter (nano::websocket::message cons
 	return should_filter_l;
 }
 
-nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a) :
-ws_listener (listener_a), ws (std::move (socket_a)), strand (ws.get_executor ())
+nano::websocket::session::session (nano::websocket::listener & listener_a, socket_type socket_a)
+	: ws_listener (listener_a)
+	, ws (std::move (socket_a))
+	, strand (ws.get_executor ())
 {
 	ws.text (true);
 	ws_listener.get_logger ().try_log ("Websocket: session started");
@@ -461,11 +463,11 @@ void nano::websocket::listener::stop ()
 	sessions.clear ();
 }
 
-nano::websocket::listener::listener (nano::logger_mt & logger_a, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a) :
-logger (logger_a),
-wallets (wallets_a),
-acceptor (io_ctx_a),
-socket (io_ctx_a)
+nano::websocket::listener::listener (nano::logger_mt & logger_a, nano::wallets & wallets_a, boost::asio::io_context & io_ctx_a, boost::asio::ip::tcp::endpoint endpoint_a)
+	: logger (logger_a)
+	, wallets (wallets_a)
+	, acceptor (io_ctx_a)
+	, socket (io_ctx_a)
 {
 	try
 	{
@@ -492,9 +494,9 @@ void nano::websocket::listener::accept ()
 {
 	auto this_l (shared_from_this ());
 	acceptor.async_accept (socket,
-	[this_l](boost::system::error_code const & ec) {
-		this_l->on_accept (ec);
-	});
+		[this_l](boost::system::error_code const & ec) {
+			this_l->on_accept (ec);
+		});
 }
 
 void nano::websocket::listener::on_accept (boost::system::error_code ec)

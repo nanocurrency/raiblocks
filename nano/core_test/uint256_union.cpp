@@ -470,7 +470,7 @@ template <typename Union, typename Bound>
 void assert_union_types ()
 {
 	static_assert ((std::is_same<Union, nano::uint128_union>::value && std::is_same<Bound, nano::uint128_t>::value) || (std::is_same<Union, nano::uint256_union>::value && std::is_same<Bound, nano::uint256_t>::value) || (std::is_same<Union, nano::uint512_union>::value && std::is_same<Bound, nano::uint512_t>::value),
-	"Union type needs to be consistent with the lower/upper Bound type");
+		"Union type needs to be consistent with the lower/upper Bound type");
 }
 
 template <typename Union, typename Bound>

@@ -96,14 +96,14 @@ public:
 class receive_session final : public std::enable_shared_from_this<receive_session>
 {
 public:
-	receive_session (boost::asio::io_context & ioc, std::atomic<int> & send_calls_remaining, std::string const & wallet, std::string const & account, std::string const & block, tcp::resolver::results_type const & results) :
-	socket (ioc),
-	strand (socket.get_executor ()),
-	send_calls_remaining (send_calls_remaining),
-	wallet (wallet),
-	account (account),
-	block (block),
-	results (results)
+	receive_session (boost::asio::io_context & ioc, std::atomic<int> & send_calls_remaining, std::string const & wallet, std::string const & account, std::string const & block, tcp::resolver::results_type const & results)
+		: socket (ioc)
+		, strand (socket.get_executor ())
+		, send_calls_remaining (send_calls_remaining)
+		, wallet (wallet)
+		, account (account)
+		, block (block)
+		, results (results)
 	{
 	}
 
@@ -172,15 +172,15 @@ private:
 class send_session final : public std::enable_shared_from_this<send_session>
 {
 public:
-	send_session (boost::asio::io_context & ioc, std::atomic<int> & send_calls_remaining, std::string const & wallet, std::string const & source, std::string const & destination, tcp::resolver::results_type const & results) :
-	io_ctx (ioc),
-	socket (ioc),
-	strand (socket.get_executor ()),
-	send_calls_remaining (send_calls_remaining),
-	wallet (wallet),
-	source (source),
-	destination (destination),
-	results (results)
+	send_session (boost::asio::io_context & ioc, std::atomic<int> & send_calls_remaining, std::string const & wallet, std::string const & source, std::string const & destination, tcp::resolver::results_type const & results)
+		: io_ctx (ioc)
+		, socket (ioc)
+		, strand (socket.get_executor ())
+		, send_calls_remaining (send_calls_remaining)
+		, wallet (wallet)
+		, source (source)
+		, destination (destination)
+		, results (results)
 	{
 	}
 

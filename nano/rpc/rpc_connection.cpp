@@ -11,13 +11,13 @@
 #endif
 #include <boost/format.hpp>
 
-nano::rpc_connection::rpc_connection (nano::rpc_config const & rpc_config, boost::asio::io_context & io_ctx, nano::logger_mt & logger, nano::rpc_handler_interface & rpc_handler_interface) :
-socket (io_ctx),
-strand (io_ctx.get_executor ()),
-io_ctx (io_ctx),
-logger (logger),
-rpc_config (rpc_config),
-rpc_handler_interface (rpc_handler_interface)
+nano::rpc_connection::rpc_connection (nano::rpc_config const & rpc_config, boost::asio::io_context & io_ctx, nano::logger_mt & logger, nano::rpc_handler_interface & rpc_handler_interface)
+	: socket (io_ctx)
+	, strand (io_ctx.get_executor ())
+	, io_ctx (io_ctx)
+	, logger (logger)
+	, rpc_config (rpc_config)
+	, rpc_handler_interface (rpc_handler_interface)
 {
 	responded.clear ();
 }

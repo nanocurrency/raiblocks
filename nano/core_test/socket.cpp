@@ -85,16 +85,16 @@ TEST (socket, concurrent_writes)
 		auto client (std::make_shared<nano::socket> (node, boost::none, nano::socket::concurrency::multi_writer));
 		clients.push_back (client);
 		client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v4::loopback (), 25000),
-		[&connection_count_completion](boost::system::error_code const & ec_a) {
-			if (ec_a)
-			{
-				std::cerr << "async_connect: " << ec_a.message () << std::endl;
-			}
-			else
-			{
-				connection_count_completion.increment ();
-			}
-		});
+			[&connection_count_completion](boost::system::error_code const & ec_a) {
+				if (ec_a)
+				{
+					std::cerr << "async_connect: " << ec_a.message () << std::endl;
+				}
+				else
+				{
+					connection_count_completion.increment ();
+				}
+			});
 	}
 	ASSERT_FALSE (connection_count_completion.await_count_for (10s));
 

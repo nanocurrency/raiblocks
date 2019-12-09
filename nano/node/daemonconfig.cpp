@@ -7,8 +7,8 @@
 #include <sstream>
 #include <vector>
 
-nano::daemon_config::daemon_config (boost::filesystem::path const & data_path_a) :
-data_path (data_path_a)
+nano::daemon_config::daemon_config (boost::filesystem::path const & data_path_a)
+	: data_path (data_path_a)
 {
 }
 
@@ -148,8 +148,8 @@ nano::error read_node_config_toml (boost::filesystem::path const & data_path_a, 
 		if (boost::filesystem::exists (toml_config_path))
 		{
 			error = "Both json and toml node configuration files exists. "
-			        "Either remove the config.json file and restart, or remove "
-			        "the config-node.toml file to start migration on next launch.";
+					"Either remove the config.json file and restart, or remove "
+					"the config-node.toml file to start migration on next launch.";
 		}
 		else
 		{

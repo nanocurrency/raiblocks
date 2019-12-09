@@ -40,11 +40,11 @@ uint64_t nano::ip_address_hash_raw (boost::asio::ip::address const & ip_a, uint1
 	return result;
 }
 
-nano::message_header::message_header (nano::message_type type_a) :
-version_max (get_protocol_constants ().protocol_version),
-version_using (get_protocol_constants ().protocol_version),
-version_min (get_protocol_constants ().protocol_version_min),
-type (type_a)
+nano::message_header::message_header (nano::message_type type_a)
+	: version_max (get_protocol_constants ().protocol_version)
+	, version_using (get_protocol_constants ().protocol_version)
+	, version_min (get_protocol_constants ().protocol_version_min)
+	, type (type_a)
 {
 }
 
@@ -96,13 +96,13 @@ bool nano::message_header::deserialize (nano::stream & stream_a)
 	return error;
 }
 
-nano::message::message (nano::message_type type_a) :
-header (type_a)
+nano::message::message (nano::message_type type_a)
+	: header (type_a)
 {
 }
 
-nano::message::message (nano::message_header const & header_a) :
-header (header_a)
+nano::message::message (nano::message_header const & header_a)
+	: header (header_a)
 {
 }
 
@@ -299,12 +299,12 @@ std::string nano::message_parser::status_string ()
 	return "[unknown parse_status]";
 }
 
-nano::message_parser::message_parser (nano::block_uniquer & block_uniquer_a, nano::vote_uniquer & vote_uniquer_a, nano::message_visitor & visitor_a, nano::work_pool & pool_a) :
-block_uniquer (block_uniquer_a),
-vote_uniquer (vote_uniquer_a),
-visitor (visitor_a),
-pool (pool_a),
-status (parse_status::success)
+nano::message_parser::message_parser (nano::block_uniquer & block_uniquer_a, nano::vote_uniquer & vote_uniquer_a, nano::message_visitor & visitor_a, nano::work_pool & pool_a)
+	: block_uniquer (block_uniquer_a)
+	, vote_uniquer (vote_uniquer_a)
+	, visitor (visitor_a)
+	, pool (pool_a)
+	, status (parse_status::success)
 {
 }
 
@@ -474,8 +474,8 @@ bool nano::message_parser::at_end (nano::stream & stream_a)
 	return end;
 }
 
-nano::keepalive::keepalive () :
-message (nano::message_type::keepalive)
+nano::keepalive::keepalive ()
+	: message (nano::message_type::keepalive)
 {
 	nano::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
 	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
@@ -484,8 +484,8 @@ message (nano::message_type::keepalive)
 	}
 }
 
-nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-message (header_a)
+nano::keepalive::keepalive (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a)
+	: message (header_a)
 {
 	if (!error_a)
 	{
@@ -535,8 +535,8 @@ bool nano::keepalive::operator== (nano::keepalive const & other_a) const
 	return peers == other_a.peers;
 }
 
-nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::block_uniquer * uniquer_a) :
-message (header_a)
+nano::publish::publish (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::block_uniquer * uniquer_a)
+	: message (header_a)
 {
 	if (!error_a)
 	{
@@ -544,9 +544,9 @@ message (header_a)
 	}
 }
 
-nano::publish::publish (std::shared_ptr<nano::block> block_a) :
-message (nano::message_type::publish),
-block (block_a)
+nano::publish::publish (std::shared_ptr<nano::block> block_a)
+	: message (nano::message_type::publish)
+	, block (block_a)
 {
 	header.block_type_set (block->type ());
 }
@@ -576,8 +576,8 @@ bool nano::publish::operator== (nano::publish const & other_a) const
 	return *block == *other_a.block;
 }
 
-nano::confirm_req::confirm_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::block_uniquer * uniquer_a) :
-message (header_a)
+nano::confirm_req::confirm_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::block_uniquer * uniquer_a)
+	: message (header_a)
 {
 	if (!error_a)
 	{
@@ -585,16 +585,16 @@ message (header_a)
 	}
 }
 
-nano::confirm_req::confirm_req (std::shared_ptr<nano::block> block_a) :
-message (nano::message_type::confirm_req),
-block (block_a)
+nano::confirm_req::confirm_req (std::shared_ptr<nano::block> block_a)
+	: message (nano::message_type::confirm_req)
+	, block (block_a)
 {
 	header.block_type_set (block->type ());
 }
 
-nano::confirm_req::confirm_req (std::vector<std::pair<nano::block_hash, nano::root>> const & roots_hashes_a) :
-message (nano::message_type::confirm_req),
-roots_hashes (roots_hashes_a)
+nano::confirm_req::confirm_req (std::vector<std::pair<nano::block_hash, nano::root>> const & roots_hashes_a)
+	: message (nano::message_type::confirm_req)
+	, roots_hashes (roots_hashes_a)
 {
 	// not_a_block (1) block type for hashes + roots request
 	header.block_type_set (nano::block_type::not_a_block);
@@ -602,9 +602,9 @@ roots_hashes (roots_hashes_a)
 	header.count_set (static_cast<uint8_t> (roots_hashes.size ()));
 }
 
-nano::confirm_req::confirm_req (nano::block_hash const & hash_a, nano::root const & root_a) :
-message (nano::message_type::confirm_req),
-roots_hashes (std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a)))
+nano::confirm_req::confirm_req (nano::block_hash const & hash_a, nano::root const & root_a)
+	: message (nano::message_type::confirm_req)
+	, roots_hashes (std::vector<std::pair<nano::block_hash, nano::root>> (1, std::make_pair (hash_a, root_a)))
 {
 	assert (!roots_hashes.empty ());
 	// not_a_block (1) block type for hashes + roots request
@@ -716,9 +716,9 @@ size_t nano::confirm_req::size (nano::block_type type_a, size_t count)
 	return result;
 }
 
-nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a) :
-message (header_a),
-vote (nano::make_shared<nano::vote> (error_a, stream_a, header.block_type ()))
+nano::confirm_ack::confirm_ack (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a, nano::vote_uniquer * uniquer_a)
+	: message (header_a)
+	, vote (nano::make_shared<nano::vote> (error_a, stream_a, header.block_type ()))
 {
 	if (!error_a && uniquer_a)
 	{
@@ -726,9 +726,9 @@ vote (nano::make_shared<nano::vote> (error_a, stream_a, header.block_type ()))
 	}
 }
 
-nano::confirm_ack::confirm_ack (std::shared_ptr<nano::vote> vote_a) :
-message (nano::message_type::confirm_ack),
-vote (vote_a)
+nano::confirm_ack::confirm_ack (std::shared_ptr<nano::vote> vote_a)
+	: message (nano::message_type::confirm_ack)
+	, vote (vote_a)
 {
 	assert (!vote_a->blocks.empty ());
 	auto & first_vote_block (vote_a->blocks[0]);
@@ -776,13 +776,13 @@ size_t nano::confirm_ack::size (nano::block_type type_a, size_t count)
 	return result;
 }
 
-nano::frontier_req::frontier_req () :
-message (nano::message_type::frontier_req)
+nano::frontier_req::frontier_req ()
+	: message (nano::message_type::frontier_req)
 {
 }
 
-nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-message (header_a)
+nano::frontier_req::frontier_req (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a)
+	: message (header_a)
 {
 	if (!error_a)
 	{
@@ -826,13 +826,13 @@ bool nano::frontier_req::operator== (nano::frontier_req const & other_a) const
 	return start == other_a.start && age == other_a.age && count == other_a.count;
 }
 
-nano::bulk_pull::bulk_pull () :
-message (nano::message_type::bulk_pull)
+nano::bulk_pull::bulk_pull ()
+	: message (nano::message_type::bulk_pull)
 {
 }
 
-nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-message (header_a)
+nano::bulk_pull::bulk_pull (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a)
+	: message (header_a)
 {
 	if (!error_a)
 	{
@@ -922,13 +922,13 @@ void nano::bulk_pull::set_count_present (bool value_a)
 	header.extensions.set (count_present_flag, value_a);
 }
 
-nano::bulk_pull_account::bulk_pull_account () :
-message (nano::message_type::bulk_pull_account)
+nano::bulk_pull_account::bulk_pull_account ()
+	: message (nano::message_type::bulk_pull_account)
 {
 }
 
-nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-message (header_a)
+nano::bulk_pull_account::bulk_pull_account (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a)
+	: message (header_a)
 {
 	if (!error_a)
 	{
@@ -967,13 +967,13 @@ bool nano::bulk_pull_account::deserialize (nano::stream & stream_a)
 	return error;
 }
 
-nano::bulk_push::bulk_push () :
-message (nano::message_type::bulk_push)
+nano::bulk_push::bulk_push ()
+	: message (nano::message_type::bulk_push)
 {
 }
 
-nano::bulk_push::bulk_push (nano::message_header const & header_a) :
-message (header_a)
+nano::bulk_push::bulk_push (nano::message_header const & header_a)
+	: message (header_a)
 {
 }
 
@@ -993,18 +993,18 @@ void nano::bulk_push::visit (nano::message_visitor & visitor_a) const
 	visitor_a.bulk_push (*this);
 }
 
-nano::node_id_handshake::node_id_handshake (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a) :
-message (header_a),
-query (boost::none),
-response (boost::none)
+nano::node_id_handshake::node_id_handshake (bool & error_a, nano::stream & stream_a, nano::message_header const & header_a)
+	: message (header_a)
+	, query (boost::none)
+	, response (boost::none)
 {
 	error_a = deserialize (stream_a);
 }
 
-nano::node_id_handshake::node_id_handshake (boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response) :
-message (nano::message_type::node_id_handshake),
-query (query),
-response (response)
+nano::node_id_handshake::node_id_handshake (boost::optional<nano::uint256_union> query, boost::optional<std::pair<nano::account, nano::signature>> response)
+	: message (nano::message_type::node_id_handshake)
+	, query (query)
+	, response (response)
 {
 	if (query)
 	{
@@ -1174,7 +1174,7 @@ bool nano::parse_tcp_endpoint (std::string const & string, nano::tcp_endpoint & 
 	return result;
 }
 
-nano::node_singleton_memory_pool_purge_guard::node_singleton_memory_pool_purge_guard () :
-cleanup_guard ({ nano::block_memory_pool_purge, nano::purge_singleton_pool_memory<nano::vote>, nano::purge_singleton_pool_memory<nano::election> })
+nano::node_singleton_memory_pool_purge_guard::node_singleton_memory_pool_purge_guard ()
+	: cleanup_guard ({ nano::block_memory_pool_purge, nano::purge_singleton_pool_memory<nano::vote>, nano::purge_singleton_pool_memory<nano::election> })
 {
 }

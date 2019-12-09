@@ -15,24 +15,24 @@
 
 #include <boost/format.hpp>
 
-nano::vote_processor::vote_processor (nano::signature_checker & checker_a, nano::active_transactions & active_a, nano::block_store & store_a, nano::node_observers & observers_a, nano::stat & stats_a, nano::node_config & config_a, nano::logger_mt & logger_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::network_params & network_params_a) :
-checker (checker_a),
-active (active_a),
-store (store_a),
-observers (observers_a),
-stats (stats_a),
-config (config_a),
-logger (logger_a),
-online_reps (online_reps_a),
-ledger (ledger_a),
-network_params (network_params_a),
-started (false),
-stopped (false),
-is_active (false),
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::vote_processing);
-	process_loop ();
-})
+nano::vote_processor::vote_processor (nano::signature_checker & checker_a, nano::active_transactions & active_a, nano::block_store & store_a, nano::node_observers & observers_a, nano::stat & stats_a, nano::node_config & config_a, nano::logger_mt & logger_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::network_params & network_params_a)
+	: checker (checker_a)
+	, active (active_a)
+	, store (store_a)
+	, observers (observers_a)
+	, stats (stats_a)
+	, config (config_a)
+	, logger (logger_a)
+	, online_reps (online_reps_a)
+	, ledger (ledger_a)
+	, network_params (network_params_a)
+	, started (false)
+	, stopped (false)
+	, is_active (false)
+	, thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::vote_processing);
+		process_loop ();
+	})
 {
 	nano::unique_lock<std::mutex> lock (mutex);
 	condition.wait (lock, [& started = started] { return started; });

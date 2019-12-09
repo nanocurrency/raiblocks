@@ -18,7 +18,7 @@ class json_handler : public std::enable_shared_from_this<nano::json_handler>
 {
 public:
 	json_handler (
-	nano::node &, nano::node_rpc_config const &, std::string const &, std::function<void(std::string const &)> const &, std::function<void()> stop_callback = []() {});
+		nano::node &, nano::node_rpc_config const &, std::string const &, std::function<void(std::string const &)> const &, std::function<void()> stop_callback = []() {});
 	void process_request (bool unsafe = false);
 	void account_balance ();
 	void account_block_count ();
@@ -166,10 +166,10 @@ class inprocess_rpc_handler final : public nano::rpc_handler_interface
 {
 public:
 	inprocess_rpc_handler (
-	nano::node & node_a, nano::node_rpc_config const & node_rpc_config_a, std::function<void()> stop_callback_a = []() {}) :
-	node (node_a),
-	stop_callback (stop_callback_a),
-	node_rpc_config (node_rpc_config_a)
+		nano::node & node_a, nano::node_rpc_config const & node_rpc_config_a, std::function<void()> stop_callback_a = []() {})
+		: node (node_a)
+		, stop_callback (stop_callback_a)
+		, node_rpc_config (node_rpc_config_a)
 	{
 	}
 

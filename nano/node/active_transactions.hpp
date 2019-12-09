@@ -108,14 +108,14 @@ public:
 	boost::optional<nano::election_status_type> confirm_block (nano::transaction const &, std::shared_ptr<nano::block>);
 	void post_confirmation_height_set (nano::transaction const & transaction_a, std::shared_ptr<nano::block> block_a, nano::block_sideband const & sideband_a, nano::election_status_type election_status_type_a);
 	boost::multi_index_container<
-	nano::conflict_info,
-	boost::multi_index::indexed_by<
-	boost::multi_index::hashed_unique<
-	boost::multi_index::member<nano::conflict_info, nano::qualified_root, &nano::conflict_info::root>>,
-	boost::multi_index::ordered_non_unique<
-	boost::multi_index::member<nano::conflict_info, uint64_t, &nano::conflict_info::adjusted_difficulty>,
-	std::greater<uint64_t>>>>
-	roots;
+		nano::conflict_info,
+		boost::multi_index::indexed_by<
+			boost::multi_index::hashed_unique<
+				boost::multi_index::member<nano::conflict_info, nano::qualified_root, &nano::conflict_info::root>>,
+			boost::multi_index::ordered_non_unique<
+				boost::multi_index::member<nano::conflict_info, uint64_t, &nano::conflict_info::adjusted_difficulty>,
+				std::greater<uint64_t>>>>
+		roots;
 	std::unordered_map<nano::block_hash, std::shared_ptr<nano::election>> blocks;
 	std::deque<nano::election_status> list_confirmed ();
 	std::deque<nano::election_status> confirmed;
@@ -155,8 +155,8 @@ private:
 	void election_escalate (std::shared_ptr<nano::election> &, nano::transaction const &, size_t const &);
 	void election_broadcast (std::shared_ptr<nano::election> &, nano::transaction const &, std::deque<std::shared_ptr<nano::block>> &, std::unordered_set<nano::qualified_root> &, nano::qualified_root &);
 	bool election_request_confirm (std::shared_ptr<nano::election> &, std::vector<nano::representative> const &, size_t const &,
-	std::deque<std::pair<std::shared_ptr<nano::block>, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>>>> & single_confirm_req_bundle_l,
-	std::unordered_map<std::shared_ptr<nano::transport::channel>, std::deque<std::pair<nano::block_hash, nano::root>>> & batched_confirm_req_bundle_l);
+		std::deque<std::pair<std::shared_ptr<nano::block>, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>>>> & single_confirm_req_bundle_l,
+		std::unordered_map<std::shared_ptr<nano::transport::channel>, std::deque<std::pair<nano::block_hash, nano::root>>> & batched_confirm_req_bundle_l);
 	void request_confirm (nano::unique_lock<std::mutex> &);
 	nano::account next_frontier_account{ 0 };
 	std::chrono::steady_clock::time_point next_frontier_check{ std::chrono::steady_clock::now () };
@@ -165,20 +165,20 @@ private:
 	std::atomic<bool> stopped{ false };
 	unsigned ongoing_broadcasts{ 0 };
 	using ordered_elections_timepoint = boost::multi_index_container<
-	nano::election_timepoint,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::election_timepoint, std::chrono::steady_clock::time_point, &nano::election_timepoint::time>>,
-	boost::multi_index::hashed_unique<boost::multi_index::member<nano::election_timepoint, nano::qualified_root, &nano::election_timepoint::root>>>>;
+		nano::election_timepoint,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::election_timepoint, std::chrono::steady_clock::time_point, &nano::election_timepoint::time>>,
+			boost::multi_index::hashed_unique<boost::multi_index::member<nano::election_timepoint, nano::qualified_root, &nano::election_timepoint::root>>>>;
 	ordered_elections_timepoint confirmed_set;
 	void prioritize_frontiers_for_confirmation (nano::transaction const &, std::chrono::milliseconds, std::chrono::milliseconds);
 	using prioritize_num_uncemented = boost::multi_index_container<
-	nano::cementable_account,
-	boost::multi_index::indexed_by<
-	boost::multi_index::hashed_unique<
-	boost::multi_index::member<nano::cementable_account, nano::account, &nano::cementable_account::account>>,
-	boost::multi_index::ordered_non_unique<
-	boost::multi_index::member<nano::cementable_account, uint64_t, &nano::cementable_account::blocks_uncemented>,
-	std::greater<uint64_t>>>>;
+		nano::cementable_account,
+		boost::multi_index::indexed_by<
+			boost::multi_index::hashed_unique<
+				boost::multi_index::member<nano::cementable_account, nano::account, &nano::cementable_account::account>>,
+			boost::multi_index::ordered_non_unique<
+				boost::multi_index::member<nano::cementable_account, uint64_t, &nano::cementable_account::blocks_uncemented>,
+				std::greater<uint64_t>>>>;
 	prioritize_num_uncemented priority_wallet_cementable_frontiers;
 	prioritize_num_uncemented priority_cementable_frontiers;
 	std::unordered_set<nano::wallet_id> wallet_ids_already_iterated;
@@ -188,11 +188,11 @@ private:
 	static size_t constexpr max_priority_cementable_frontiers{ 100000 };
 	static size_t constexpr confirmed_frontiers_max_pending_cut_off{ 1000 };
 	boost::multi_index_container<
-	nano::gap_information,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::gap_information, std::chrono::steady_clock::time_point, &nano::gap_information::arrival>>,
-	boost::multi_index::hashed_unique<boost::multi_index::member<nano::gap_information, nano::block_hash, &nano::gap_information::hash>>>>
-	inactive_votes_cache;
+		nano::gap_information,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::gap_information, std::chrono::steady_clock::time_point, &nano::gap_information::arrival>>,
+			boost::multi_index::hashed_unique<boost::multi_index::member<nano::gap_information, nano::block_hash, &nano::gap_information::hash>>>>
+		inactive_votes_cache;
 	static size_t constexpr inactive_votes_cache_max{ 16 * 1024 };
 	ordered_elections_timepoint dropped_elections_cache;
 	static size_t constexpr dropped_elections_cache_max{ 32 * 1024 };

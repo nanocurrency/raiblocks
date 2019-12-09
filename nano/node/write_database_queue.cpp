@@ -3,9 +3,9 @@
 
 #include <algorithm>
 
-nano::write_guard::write_guard (nano::condition_variable & cv_a, std::function<void()> guard_finish_callback_a) :
-cv (cv_a),
-guard_finish_callback (guard_finish_callback_a)
+nano::write_guard::write_guard (nano::condition_variable & cv_a, std::function<void()> guard_finish_callback_a)
+	: cv (cv_a)
+	, guard_finish_callback (guard_finish_callback_a)
 {
 }
 
@@ -15,15 +15,15 @@ nano::write_guard::~write_guard ()
 	cv.notify_all ();
 }
 
-nano::write_database_queue::write_database_queue () :
 // clang-format off
-guard_finish_callback ([&queue = queue, &mutex = mutex]() {
-	nano::lock_guard<std::mutex> guard (mutex);
-	queue.pop_front ();
-})
-// clang-format on
+nano::write_database_queue::write_database_queue ()
+	: guard_finish_callback ([& queue = queue, &mutex = mutex]() {
+		nano::lock_guard<std::mutex> guard (mutex);
+		queue.pop_front ();
+	})
 {
 }
+// clang-format on
 
 nano::write_guard nano::write_database_queue::wait (nano::writer writer)
 {

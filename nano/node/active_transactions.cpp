@@ -10,18 +10,18 @@
 
 using namespace std::chrono;
 
-nano::active_transactions::active_transactions (nano::node & node_a) :
-node (node_a),
-long_election_threshold (node.network_params.network.is_test_network () ? 2s : 24s),
-election_request_delay (node.network_params.network.is_test_network () ? 0s : 1s),
-election_time_to_live (node.network_params.network.is_test_network () ? 0s : 10s),
-multipliers_cb (20, 1.),
-trended_active_difficulty (node.network_params.network.publish_threshold),
-next_frontier_check (steady_clock::now ()),
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::request_loop);
-	request_loop ();
-})
+nano::active_transactions::active_transactions (nano::node & node_a)
+	: node (node_a)
+	, long_election_threshold (node.network_params.network.is_test_network () ? 2s : 24s)
+	, election_request_delay (node.network_params.network.is_test_network () ? 0s : 1s)
+	, election_time_to_live (node.network_params.network.is_test_network () ? 0s : 10s)
+	, multipliers_cb (20, 1.)
+	, trended_active_difficulty (node.network_params.network.publish_threshold)
+	, next_frontier_check (steady_clock::now ())
+	, thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::request_loop);
+		request_loop ();
+	})
 {
 	nano::unique_lock<std::mutex> lock (mutex);
 	condition.wait (lock, [& started = started] { return started; });
@@ -219,8 +219,8 @@ void nano::active_transactions::election_broadcast (std::shared_ptr<nano::electi
 }
 
 bool nano::active_transactions::election_request_confirm (std::shared_ptr<nano::election> & election_l, std::vector<nano::representative> const & representatives_l, size_t const & roots_size_l,
-std::deque<std::pair<std::shared_ptr<nano::block>, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>>>> & single_confirm_req_bundle_l,
-std::unordered_map<std::shared_ptr<nano::transport::channel>, std::deque<std::pair<nano::block_hash, nano::root>>> & batched_confirm_req_bundle_l)
+	std::deque<std::pair<std::shared_ptr<nano::block>, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>>>> & single_confirm_req_bundle_l,
+	std::unordered_map<std::shared_ptr<nano::transport::channel>, std::deque<std::pair<nano::block_hash, nano::root>>> & batched_confirm_req_bundle_l)
 {
 	bool inserted_into_any_bundle{ false };
 	std::vector<std::shared_ptr<nano::transport::channel>> rep_channels_missing_vote_l;
@@ -395,40 +395,40 @@ void nano::active_transactions::request_confirm (nano::unique_lock<std::mutex> &
 	if (!blocks_bundle_l.empty ())
 	{
 		node.network.flood_block_many (
-		std::move (blocks_bundle_l), [this]() {
-			{
-				nano::lock_guard<std::mutex> guard_l (this->mutex);
-				--this->ongoing_broadcasts;
-			}
-			this->condition.notify_all ();
-		},
-		10); // 10ms/block * 30blocks = 300ms < 500ms
+			std::move (blocks_bundle_l), [this]() {
+				{
+					nano::lock_guard<std::mutex> guard_l (this->mutex);
+					--this->ongoing_broadcasts;
+				}
+				this->condition.notify_all ();
+			},
+			10); // 10ms/block * 30blocks = 300ms < 500ms
 	}
 	// Batch confirmation request
 	if (!batched_confirm_req_bundle_l.empty ())
 	{
 		node.network.broadcast_confirm_req_batched_many (
-		batched_confirm_req_bundle_l, [this]() {
-			{
-				nano::lock_guard<std::mutex> guard_l (this->mutex);
-				--this->ongoing_broadcasts;
-			}
-			this->condition.notify_all ();
-		},
-		15); // 15ms/batch * 20batches = 300ms < 500ms
+			batched_confirm_req_bundle_l, [this]() {
+				{
+					nano::lock_guard<std::mutex> guard_l (this->mutex);
+					--this->ongoing_broadcasts;
+				}
+				this->condition.notify_all ();
+			},
+			15); // 15ms/batch * 20batches = 300ms < 500ms
 	}
 	// Single confirmation requests
 	if (!single_confirm_req_bundle_l.empty ())
 	{
 		node.network.broadcast_confirm_req_many (
-		single_confirm_req_bundle_l, [this]() {
-			{
-				nano::lock_guard<std::mutex> guard_l (this->mutex);
-				--this->ongoing_broadcasts;
-			}
-			this->condition.notify_all ();
-		},
-		30); // 30~60ms/req * 5 reqs = 150~300ms < 500ms
+			single_confirm_req_bundle_l, [this]() {
+				{
+					nano::lock_guard<std::mutex> guard_l (this->mutex);
+					--this->ongoing_broadcasts;
+				}
+				this->condition.notify_all ();
+			},
+			30); // 30~60ms/req * 5 reqs = 150~300ms < 500ms
 	}
 	lock_a.lock ();
 	// Erase inactive elections
@@ -1155,8 +1155,9 @@ std::chrono::steady_clock::time_point nano::active_transactions::find_dropped_el
 	}
 }
 
-nano::cementable_account::cementable_account (nano::account const & account_a, size_t blocks_uncemented_a) :
-account (account_a), blocks_uncemented (blocks_uncemented_a)
+nano::cementable_account::cementable_account (nano::account const & account_a, size_t blocks_uncemented_a)
+	: account (account_a)
+	, blocks_uncemented (blocks_uncemented_a)
 {
 }
 

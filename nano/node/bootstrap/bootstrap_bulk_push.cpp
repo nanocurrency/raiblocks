@@ -5,8 +5,8 @@
 
 #include <boost/format.hpp>
 
-nano::bulk_push_client::bulk_push_client (std::shared_ptr<nano::bootstrap_client> const & connection_a) :
-connection (connection_a)
+nano::bulk_push_client::bulk_push_client (std::shared_ptr<nano::bootstrap_client> const & connection_a)
+	: connection (connection_a)
 {
 }
 
@@ -19,21 +19,21 @@ void nano::bulk_push_client::start ()
 	nano::bulk_push message;
 	auto this_l (shared_from_this ());
 	connection->channel->send (
-	message, [this_l](boost::system::error_code const & ec, size_t size_a) {
-		auto transaction (this_l->connection->node->store.tx_begin_read ());
-		if (!ec)
-		{
-			this_l->push (transaction);
-		}
-		else
-		{
-			if (this_l->connection->node->config.logging.bulk_pull_logging ())
+		message, [this_l](boost::system::error_code const & ec, size_t size_a) {
+			auto transaction (this_l->connection->node->store.tx_begin_read ());
+			if (!ec)
 			{
-				this_l->connection->node->logger.try_log (boost::str (boost::format ("Unable to send bulk_push request: %1%") % ec.message ()));
+				this_l->push (transaction);
 			}
-		}
-	},
-	false); // is bootstrap traffic is_droppable false
+			else
+			{
+				if (this_l->connection->node->config.logging.bulk_pull_logging ())
+				{
+					this_l->connection->node->logger.try_log (boost::str (boost::format ("Unable to send bulk_push request: %1%") % ec.message ()));
+				}
+			}
+		},
+		false); // is bootstrap traffic is_droppable false
 }
 
 void nano::bulk_push_client::push (nano::transaction const & transaction_a)
@@ -121,9 +121,9 @@ void nano::bulk_push_client::push_block (nano::block const & block_a)
 	});
 }
 
-nano::bulk_push_server::bulk_push_server (std::shared_ptr<nano::bootstrap_server> const & connection_a) :
-receive_buffer (std::make_shared<std::vector<uint8_t>> ()),
-connection (connection_a)
+nano::bulk_push_server::bulk_push_server (std::shared_ptr<nano::bootstrap_server> const & connection_a)
+	: receive_buffer (std::make_shared<std::vector<uint8_t>> ())
+	, connection (connection_a)
 {
 	receive_buffer->resize (256);
 }

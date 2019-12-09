@@ -5,10 +5,10 @@
 
 #include <cassert>
 
-nano::online_reps::online_reps (nano::ledger & ledger_a, nano::network_params & network_params_a, nano::uint128_t minimum_a) :
-ledger (ledger_a),
-network_params (network_params_a),
-minimum (minimum_a)
+nano::online_reps::online_reps (nano::ledger & ledger_a, nano::network_params & network_params_a, nano::uint128_t minimum_a)
+	: ledger (ledger_a)
+	, network_params (network_params_a)
+	, minimum (minimum_a)
 {
 	if (!ledger.store.init_error ())
 	{

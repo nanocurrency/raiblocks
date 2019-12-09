@@ -1003,9 +1003,9 @@ template <typename Val, typename Derived_Store>
 class block_predecessor_set : public nano::block_visitor
 {
 public:
-	block_predecessor_set (nano::write_transaction const & transaction_a, nano::block_store_partial<Val, Derived_Store> & store_a) :
-	transaction (transaction_a),
-	store (store_a)
+	block_predecessor_set (nano::write_transaction const & transaction_a, nano::block_store_partial<Val, Derived_Store> & store_a)
+		: transaction (transaction_a)
+		, store (store_a)
 	{
 	}
 	virtual ~block_predecessor_set () = default;

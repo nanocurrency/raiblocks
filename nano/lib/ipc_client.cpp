@@ -34,8 +34,12 @@ template <typename SOCKET_TYPE, typename ENDPOINT_TYPE>
 class socket_client : public nano::ipc::socket_base, public channel
 {
 public:
-	socket_client (boost::asio::io_context & io_ctx_a, ENDPOINT_TYPE endpoint_a) :
-	socket_base (io_ctx_a), endpoint (endpoint_a), socket (io_ctx_a), resolver (io_ctx_a), strand (io_ctx_a.get_executor ())
+	socket_client (boost::asio::io_context & io_ctx_a, ENDPOINT_TYPE endpoint_a)
+		: socket_base (io_ctx_a)
+		, endpoint (endpoint_a)
+		, socket (io_ctx_a)
+		, resolver (io_ctx_a)
+		, strand (io_ctx_a.get_executor ())
 	{
 	}
 
@@ -107,8 +111,8 @@ private:
 class client_impl : public nano::ipc::ipc_client_impl
 {
 public:
-	explicit client_impl (boost::asio::io_context & io_ctx_a) :
-	io_ctx (io_ctx_a)
+	explicit client_impl (boost::asio::io_context & io_ctx_a)
+		: io_ctx (io_ctx_a)
 	{
 	}
 
@@ -159,8 +163,8 @@ private:
 };
 }
 
-nano::ipc::ipc_client::ipc_client (boost::asio::io_context & io_ctx_a) :
-io_ctx (io_ctx_a)
+nano::ipc::ipc_client::ipc_client (boost::asio::io_context & io_ctx_a)
+	: io_ctx (io_ctx_a)
 {
 }
 

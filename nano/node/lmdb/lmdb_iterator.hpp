@@ -164,21 +164,21 @@ template <typename T, typename U>
 class mdb_merge_iterator : public store_iterator_impl<T, U>
 {
 public:
-	mdb_merge_iterator (nano::transaction const & transaction_a, MDB_dbi db1_a, MDB_dbi db2_a) :
-	impl1 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db1_a)),
-	impl2 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db2_a))
+	mdb_merge_iterator (nano::transaction const & transaction_a, MDB_dbi db1_a, MDB_dbi db2_a)
+		: impl1 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db1_a))
+		, impl2 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db2_a))
 	{
 	}
 
-	mdb_merge_iterator () :
-	impl1 (std::make_unique<nano::mdb_iterator<T, U>> ()),
-	impl2 (std::make_unique<nano::mdb_iterator<T, U>> ())
+	mdb_merge_iterator ()
+		: impl1 (std::make_unique<nano::mdb_iterator<T, U>> ())
+		, impl2 (std::make_unique<nano::mdb_iterator<T, U>> ())
 	{
 	}
 
-	mdb_merge_iterator (nano::transaction const & transaction_a, MDB_dbi db1_a, MDB_dbi db2_a, MDB_val const & val_a) :
-	impl1 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db1_a, val_a)),
-	impl2 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db2_a, val_a))
+	mdb_merge_iterator (nano::transaction const & transaction_a, MDB_dbi db1_a, MDB_dbi db2_a, MDB_val const & val_a)
+		: impl1 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db1_a, val_a))
+		, impl2 (std::make_unique<nano::mdb_iterator<T, U>> (transaction_a, db2_a, val_a))
 	{
 	}
 

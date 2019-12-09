@@ -82,8 +82,9 @@ private:
 class stat_entry final
 {
 public:
-	stat_entry (size_t capacity, size_t interval) :
-	samples (capacity), sample_interval (interval)
+	stat_entry (size_t capacity, size_t interval)
+		: samples (capacity)
+		, sample_interval (interval)
 	{
 	}
 

@@ -25,9 +25,14 @@ template <typename SOCKET_TYPE>
 class session : public nano::ipc::socket_base, public std::enable_shared_from_this<session<SOCKET_TYPE>>
 {
 public:
-	session (nano::ipc::ipc_server & server_a, boost::asio::io_context & io_ctx_a, nano::ipc::ipc_config_transport & config_transport_a) :
-	socket_base (io_ctx_a),
-	server (server_a), node (server_a.node), session_id (server_a.id_dispenser.fetch_add (1)), io_ctx (io_ctx_a), socket (io_ctx_a), config_transport (config_transport_a)
+	session (nano::ipc::ipc_server & server_a, boost::asio::io_context & io_ctx_a, nano::ipc::ipc_config_transport & config_transport_a)
+		: socket_base (io_ctx_a)
+		, server (server_a)
+		, node (server_a.node)
+		, session_id (server_a.id_dispenser.fetch_add (1))
+		, io_ctx (io_ctx_a)
+		, socket (io_ctx_a)
+		, config_transport (config_transport_a)
 	{
 		if (node.config.logging.log_ipc ())
 		{
@@ -59,22 +64,22 @@ public:
 		timer_start (timeout_a);
 		auto this_l (this->shared_from_this ());
 		boost::asio::async_read (socket,
-		boost::asio::buffer (buff_a, size_a),
-		boost::asio::transfer_exactly (size_a),
-		[this_l, callback_a](boost::system::error_code const & ec, size_t bytes_transferred_a) {
-			this_l->timer_cancel ();
-			if (ec == boost::asio::error::connection_aborted || ec == boost::asio::error::connection_reset)
-			{
-				if (this_l->node.config.logging.log_ipc ())
+			boost::asio::buffer (buff_a, size_a),
+			boost::asio::transfer_exactly (size_a),
+			[this_l, callback_a](boost::system::error_code const & ec, size_t bytes_transferred_a) {
+				this_l->timer_cancel ();
+				if (ec == boost::asio::error::connection_aborted || ec == boost::asio::error::connection_reset)
 				{
-					this_l->node.logger.always_log (boost::str (boost::format ("IPC: error reading %1% ") % ec.message ()));
+					if (this_l->node.config.logging.log_ipc ())
+					{
+						this_l->node.logger.always_log (boost::str (boost::format ("IPC: error reading %1% ") % ec.message ()));
+					}
 				}
-			}
-			else if (bytes_transferred_a > 0)
-			{
-				callback_a ();
-			}
-		});
+				else if (bytes_transferred_a > 0)
+				{
+					callback_a ();
+				}
+			});
 	}
 
 	/** Handler for payload_encoding::json_legacy */
@@ -202,8 +207,9 @@ template <typename ACCEPTOR_TYPE, typename SOCKET_TYPE, typename ENDPOINT_TYPE>
 class socket_transport : public nano::ipc::transport
 {
 public:
-	socket_transport (nano::ipc::ipc_server & server_a, ENDPOINT_TYPE endpoint_a, nano::ipc::ipc_config_transport & config_transport_a, int concurrency_a) :
-	server (server_a), config_transport (config_transport_a)
+	socket_transport (nano::ipc::ipc_server & server_a, ENDPOINT_TYPE endpoint_a, nano::ipc::ipc_config_transport & config_transport_a, int concurrency_a)
+		: server (server_a)
+		, config_transport (config_transport_a)
 	{
 		// Using a per-transport event dispatcher?
 		if (concurrency_a > 0)
@@ -280,9 +286,9 @@ private:
 };
 }
 
-nano::ipc::ipc_server::ipc_server (nano::node & node_a, nano::node_rpc_config const & node_rpc_config_a) :
-node (node_a),
-node_rpc_config (node_rpc_config_a)
+nano::ipc::ipc_server::ipc_server (nano::node & node_a, nano::node_rpc_config const & node_rpc_config_a)
+	: node (node_a)
+	, node_rpc_config (node_rpc_config_a)
 {
 	try
 	{

@@ -12,14 +12,14 @@
 
 #include <chrono>
 
-nano::vote_generator::vote_generator (nano::node_config & config_a, nano::block_store & store_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::votes_cache & votes_cache_a, nano::network & network_a) :
-config (config_a),
-store (store_a),
-wallets (wallets_a),
-vote_processor (vote_processor_a),
-votes_cache (votes_cache_a),
-network (network_a),
-thread ([this]() { run (); })
+nano::vote_generator::vote_generator (nano::node_config & config_a, nano::block_store & store_a, nano::wallets & wallets_a, nano::vote_processor & vote_processor_a, nano::votes_cache & votes_cache_a, nano::network & network_a)
+	: config (config_a)
+	, store (store_a)
+	, wallets (wallets_a)
+	, vote_processor (vote_processor_a)
+	, votes_cache (votes_cache_a)
+	, network (network_a)
+	, thread ([this]() { run (); })
 {
 	nano::unique_lock<std::mutex> lock (mutex);
 	condition.wait (lock, [& started = started] { return started; });

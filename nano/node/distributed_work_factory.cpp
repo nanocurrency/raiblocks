@@ -2,8 +2,8 @@
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/node.hpp>
 
-nano::distributed_work_factory::distributed_work_factory (nano::node & node_a) :
-node (node_a)
+nano::distributed_work_factory::distributed_work_factory (nano::node & node_a)
+	: node (node_a)
 {
 }
 
@@ -63,7 +63,7 @@ void nano::distributed_work_factory::cleanup_finished ()
 		it->second.erase (std::remove_if (it->second.begin (), it->second.end (), [](auto distributed_a) {
 			return distributed_a.expired ();
 		}),
-		it->second.end ());
+			it->second.end ());
 
 		if (it->second.empty ())
 		{

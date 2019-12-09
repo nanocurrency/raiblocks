@@ -19,18 +19,18 @@
 		;                                                                                     \
 	else                                                                                      \
 		fail (::testing::internal::GetBoolAssertionFailureMessage (                           \
-		gtest_ar_, text, actual, expected)                                                    \
-		      .c_str ())
+			gtest_ar_, text, actual, expected)                                                \
+				  .c_str ())
 
 /** Extends gtest with a std::error_code assert that prints the error code message when non-zero */
 #define ASSERT_NO_ERROR(condition)                                                      \
 	GTEST_TEST_ERROR_CODE (!(condition), #condition, condition.message ().c_str (), "", \
-	GTEST_FATAL_FAILURE_)
+		GTEST_FATAL_FAILURE_)
 
 /** Extends gtest with a std::error_code assert that expects an error */
 #define ASSERT_IS_ERROR(condition)                                                            \
 	GTEST_TEST_ERROR_CODE ((condition.value () > 0), #condition, "An error was expected", "", \
-	GTEST_FATAL_FAILURE_)
+		GTEST_FATAL_FAILURE_)
 
 /* Convenience globals for core_test */
 namespace nano
@@ -78,8 +78,8 @@ private:
 class boost_log_cerr_redirect
 {
 public:
-	boost_log_cerr_redirect (std::streambuf * new_buffer) :
-	old (std::cerr.rdbuf (new_buffer))
+	boost_log_cerr_redirect (std::streambuf * new_buffer)
+		: old (std::cerr.rdbuf (new_buffer))
 	{
 		console_sink = (boost::log::add_console_log (std::cerr, boost::log::keywords::format = "%Message%"));
 	}
@@ -147,8 +147,8 @@ namespace util
 		 * Constructor
 		 * @param required_count_a When increment() reaches this count within the deadline, await_count_for() will return false.
 		 */
-		counted_completion (unsigned required_count_a) :
-		required_count (required_count_a)
+		counted_completion (unsigned required_count_a)
+			: required_count (required_count_a)
 		{
 		}
 

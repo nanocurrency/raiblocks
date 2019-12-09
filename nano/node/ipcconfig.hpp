@@ -42,8 +42,8 @@ namespace ipc
 	class ipc_config_tcp_socket : public ipc_config_transport
 	{
 	public:
-		ipc_config_tcp_socket () :
-		port (network_constants.default_ipc_port)
+		ipc_config_tcp_socket ()
+			: port (network_constants.default_ipc_port)
 		{
 		}
 		nano::network_constants network_constants;

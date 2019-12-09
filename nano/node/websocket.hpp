@@ -61,12 +61,13 @@ namespace websocket
 	class message final
 	{
 	public:
-		message (nano::websocket::topic topic_a) :
-		topic (topic_a)
+		message (nano::websocket::topic topic_a)
+			: topic (topic_a)
 		{
 		}
-		message (nano::websocket::topic topic_a, boost::property_tree::ptree & tree_a) :
-		topic (topic_a), contents (tree_a)
+		message (nano::websocket::topic topic_a, boost::property_tree::ptree & tree_a)
+			: topic (topic_a)
+			, contents (tree_a)
 		{
 		}
 

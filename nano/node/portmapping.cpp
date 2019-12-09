@@ -6,9 +6,9 @@
 #include <upnpcommands.h>
 #include <upnperrors.h>
 
-nano::port_mapping::port_mapping (nano::node & node_a) :
-node (node_a),
-protocols ({ { { "TCP", 0, boost::asio::ip::address_v4::any (), 0 }, { "UDP", 0, boost::asio::ip::address_v4::any (), 0 } } })
+nano::port_mapping::port_mapping (nano::node & node_a)
+	: node (node_a)
+	, protocols ({ { { "TCP", 0, boost::asio::ip::address_v4::any (), 0 }, { "UDP", 0, boost::asio::ip::address_v4::any (), 0 } } })
 {
 }
 

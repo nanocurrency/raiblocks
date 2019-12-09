@@ -1,11 +1,11 @@
 #include <nano/lib/threading.hpp>
 #include <nano/lib/worker.hpp>
 
-nano::worker::worker () :
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::worker);
-	this->run ();
-})
+nano::worker::worker ()
+	: thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::worker);
+		this->run ();
+	})
 {
 }
 

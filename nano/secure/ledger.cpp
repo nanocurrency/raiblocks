@@ -13,10 +13,10 @@ namespace
 class rollback_visitor : public nano::block_visitor
 {
 public:
-	rollback_visitor (nano::write_transaction const & transaction_a, nano::ledger & ledger_a, std::vector<std::shared_ptr<nano::block>> & list_a) :
-	transaction (transaction_a),
-	ledger (ledger_a),
-	list (list_a)
+	rollback_visitor (nano::write_transaction const & transaction_a, nano::ledger & ledger_a, std::vector<std::shared_ptr<nano::block>> & list_a)
+		: transaction (transaction_a)
+		, ledger (ledger_a)
+		, list (list_a)
 	{
 	}
 	virtual ~rollback_visitor () = default;
@@ -674,19 +674,19 @@ void ledger_processor::open_block (nano::open_block const & block_a)
 	}
 }
 
-ledger_processor::ledger_processor (nano::ledger & ledger_a, nano::write_transaction const & transaction_a, nano::signature_verification verification_a) :
-ledger (ledger_a),
-transaction (transaction_a),
-verification (verification_a)
+ledger_processor::ledger_processor (nano::ledger & ledger_a, nano::write_transaction const & transaction_a, nano::signature_verification verification_a)
+	: ledger (ledger_a)
+	, transaction (transaction_a)
+	, verification (verification_a)
 {
 	result.verified = verification;
 }
 } // namespace
 
-nano::ledger::ledger (nano::block_store & store_a, nano::stat & stat_a, bool cache_reps_a, bool cache_cemented_count_a) :
-store (store_a),
-stats (stat_a),
-check_bootstrap_weights (true)
+nano::ledger::ledger (nano::block_store & store_a, nano::stat & stat_a, bool cache_reps_a, bool cache_cemented_count_a)
+	: store (store_a)
+	, stats (stat_a)
+	, check_bootstrap_weights (true)
 {
 	if (!store.init_error ())
 	{
@@ -973,10 +973,10 @@ void nano::ledger::dump_account_chain (nano::account const & account_a)
 class block_fit_visitor : public nano::block_visitor
 {
 public:
-	block_fit_visitor (nano::ledger & ledger_a, nano::transaction const & transaction_a) :
-	ledger (ledger_a),
-	transaction (transaction_a),
-	result (false)
+	block_fit_visitor (nano::ledger & ledger_a, nano::transaction const & transaction_a)
+		: ledger (ledger_a)
+		, transaction (transaction_a)
+		, result (false)
 	{
 	}
 	void send_block (nano::send_block const & block_a) override

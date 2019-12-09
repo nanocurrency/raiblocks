@@ -108,8 +108,8 @@ void nano::thread_attributes::set (boost::thread::attributes & attrs)
 	attrs_l->set_stack_size (8000000); //8MB
 }
 
-nano::thread_runner::thread_runner (boost::asio::io_context & io_ctx_a, unsigned service_threads_a) :
-io_guard (boost::asio::make_work_guard (io_ctx_a))
+nano::thread_runner::thread_runner (boost::asio::io_context & io_ctx_a, unsigned service_threads_a)
+	: io_guard (boost::asio::make_work_guard (io_ctx_a))
 {
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);

@@ -67,10 +67,10 @@ void nano::rpc_secure::load_certs (boost::asio::ssl::context & context_a)
 	{
 		// This is called if the key is password protected
 		context_a.set_password_callback (
-		[this](std::size_t,
-		boost::asio::ssl::context_base::password_purpose) {
-			return config.secure.server_key_passphrase;
-		});
+			[this](std::size_t,
+				boost::asio::ssl::context_base::password_purpose) {
+				return config.secure.server_key_passphrase;
+			});
 
 		// The following two options disables the session cache and enables stateless session resumption.
 		// This is necessary because of the way the RPC server abruptly terminate connections.
@@ -78,7 +78,7 @@ void nano::rpc_secure::load_certs (boost::asio::ssl::context & context_a)
 		SSL_CTX_set_options (context_a.native_handle (), SSL_OP_NO_TICKET);
 
 		context_a.set_options (
-		boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2 | boost::asio::ssl::context::no_sslv3 | boost::asio::ssl::context::single_dh_use);
+			boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2 | boost::asio::ssl::context::no_sslv3 | boost::asio::ssl::context::single_dh_use);
 
 		context_a.use_certificate_chain_file (config.secure.server_cert_path);
 		context_a.use_private_key_file (config.secure.server_key_path, boost::asio::ssl::context::pem);
@@ -102,9 +102,9 @@ void nano::rpc_secure::load_certs (boost::asio::ssl::context & context_a)
 	}
 }
 
-nano::rpc_secure::rpc_secure (boost::asio::io_context & context_a, nano::rpc_config const & config_a, nano::rpc_handler_interface & rpc_handler_interface_a) :
-rpc (context_a, config_a, rpc_handler_interface_a),
-ssl_context (boost::asio::ssl::context::tlsv12_server)
+nano::rpc_secure::rpc_secure (boost::asio::io_context & context_a, nano::rpc_config const & config_a, nano::rpc_handler_interface & rpc_handler_interface_a)
+	: rpc (context_a, config_a, rpc_handler_interface_a)
+	, ssl_context (boost::asio::ssl::context::tlsv12_server)
 {
 	load_certs (ssl_context);
 }

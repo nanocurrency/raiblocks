@@ -147,11 +147,11 @@ public:
 	{
 	};
 	boost::multi_index_container<
-	lazy_destinations_item,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::tag<count_tag>, boost::multi_index::member<lazy_destinations_item, uint64_t, &lazy_destinations_item::count>, std::greater<uint64_t>>,
-	boost::multi_index::hashed_unique<boost::multi_index::tag<account_tag>, boost::multi_index::member<lazy_destinations_item, nano::account, &lazy_destinations_item::account>>>>
-	lazy_destinations;
+		lazy_destinations_item,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::tag<count_tag>, boost::multi_index::member<lazy_destinations_item, uint64_t, &lazy_destinations_item::count>, std::greater<uint64_t>>,
+			boost::multi_index::hashed_unique<boost::multi_index::tag<account_tag>, boost::multi_index::member<lazy_destinations_item, nano::account, &lazy_destinations_item::account>>>>
+		lazy_destinations;
 	std::atomic<size_t> lazy_blocks_count{ 0 };
 	std::atomic<bool> lazy_destinations_flushed{ false };
 	std::mutex lazy_mutex;
@@ -195,11 +195,11 @@ public:
 	{
 	};
 	boost::multi_index_container<
-	nano::cached_pulls,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::cached_pulls, std::chrono::steady_clock::time_point, &nano::cached_pulls::time>>,
-	boost::multi_index::hashed_unique<boost::multi_index::tag<account_head_tag>, boost::multi_index::member<nano::cached_pulls, nano::uint512_union, &nano::cached_pulls::account_head>>>>
-	cache;
+		nano::cached_pulls,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::cached_pulls, std::chrono::steady_clock::time_point, &nano::cached_pulls::time>>,
+			boost::multi_index::hashed_unique<boost::multi_index::tag<account_head_tag>, boost::multi_index::member<nano::cached_pulls, nano::uint512_union, &nano::cached_pulls::account_head>>>>
+		cache;
 	constexpr static size_t cache_size_max = 10000;
 };
 class excluded_peers_item final
@@ -220,11 +220,11 @@ public:
 	{
 	};
 	boost::multi_index_container<
-	nano::excluded_peers_item,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::excluded_peers_item, std::chrono::steady_clock::time_point, &nano::excluded_peers_item::exclude_until>>,
-	boost::multi_index::hashed_unique<boost::multi_index::tag<endpoint_tag>, boost::multi_index::member<nano::excluded_peers_item, nano::tcp_endpoint, &nano::excluded_peers_item::endpoint>>>>
-	peers;
+		nano::excluded_peers_item,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::member<nano::excluded_peers_item, std::chrono::steady_clock::time_point, &nano::excluded_peers_item::exclude_until>>,
+			boost::multi_index::hashed_unique<boost::multi_index::tag<endpoint_tag>, boost::multi_index::member<nano::excluded_peers_item, nano::tcp_endpoint, &nano::excluded_peers_item::endpoint>>>>
+		peers;
 	constexpr static size_t excluded_peers_size_max = 5000;
 	constexpr static double excluded_peers_percentage_limit = 0.5;
 	constexpr static uint64_t score_limit = 2;

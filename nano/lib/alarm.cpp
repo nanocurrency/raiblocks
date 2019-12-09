@@ -6,12 +6,12 @@ bool nano::operation::operator> (nano::operation const & other_a) const
 	return wakeup > other_a.wakeup;
 }
 
-nano::alarm::alarm (boost::asio::io_context & io_ctx_a) :
-io_ctx (io_ctx_a),
-thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::alarm);
-	run ();
-})
+nano::alarm::alarm (boost::asio::io_context & io_ctx_a)
+	: io_ctx (io_ctx_a)
+	, thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::alarm);
+		run ();
+	})
 {
 }
 

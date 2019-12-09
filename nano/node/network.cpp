@@ -9,13 +9,13 @@
 
 #include <numeric>
 
-nano::network::network (nano::node & node_a, uint16_t port_a) :
-buffer_container (node_a.stats, nano::network::buffer_size, 4096), // 2Mb receive buffer
-resolver (node_a.io_ctx),
-node (node_a),
-udp_channels (node_a, port_a),
-tcp_channels (node_a),
-disconnect_observer ([]() {})
+nano::network::network (nano::node & node_a, uint16_t port_a)
+	: buffer_container (node_a.stats, nano::network::buffer_size, 4096)
+	, resolver (node_a.io_ctx)
+	, node (node_a)
+	, udp_channels (node_a, port_a)
+	, tcp_channels (node_a)
+	, disconnect_observer ([]() {})
 {
 	boost::thread::attributes attrs;
 	nano::thread_attributes::set (attrs);
@@ -412,9 +412,9 @@ namespace
 class network_message_visitor : public nano::message_visitor
 {
 public:
-	network_message_visitor (nano::node & node_a, std::shared_ptr<nano::transport::channel> const & channel_a) :
-	node (node_a),
-	channel (channel_a)
+	network_message_visitor (nano::node & node_a, std::shared_ptr<nano::transport::channel> const & channel_a)
+		: node (node_a)
+		, channel (channel_a)
 	{
 	}
 	void keepalive (nano::keepalive const & message_a) override
@@ -804,13 +804,13 @@ bool nano::network::empty () const
 	return size () == 0;
 }
 
-nano::message_buffer_manager::message_buffer_manager (nano::stat & stats_a, size_t size, size_t count) :
-stats (stats_a),
-free (count),
-full (count),
-slab (size * count),
-entries (count),
-stopped (false)
+nano::message_buffer_manager::message_buffer_manager (nano::stat & stats_a, size_t size, size_t count)
+	: stats (stats_a)
+	, free (count)
+	, full (count)
+	, slab (size * count)
+	, entries (count)
+	, stopped (false)
 {
 	assert (count > 0);
 	assert (size > 0);

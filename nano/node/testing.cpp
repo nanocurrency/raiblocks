@@ -109,8 +109,8 @@ nano::system::system ()
 	logging.init (nano::unique_path ());
 }
 
-nano::system::system (uint16_t count_a, nano::transport::transport_type type_a) :
-system ()
+nano::system::system (uint16_t count_a, nano::transport::transport_type type_a)
+	: system ()
 {
 	nodes.reserve (count_a);
 	for (uint16_t i (0); i < count_a; ++i)
@@ -183,11 +183,11 @@ namespace
 class traffic_generator : public std::enable_shared_from_this<traffic_generator>
 {
 public:
-	traffic_generator (uint32_t count_a, uint32_t wait_a, std::shared_ptr<nano::node> const & node_a, nano::system & system_a) :
-	count (count_a),
-	wait (wait_a),
-	node (node_a),
-	system (system_a)
+	traffic_generator (uint32_t count_a, uint32_t wait_a, std::shared_ptr<nano::node> const & node_a, nano::system & system_a)
+		: count (count_a)
+		, wait (wait_a)
+		, node (node_a)
+		, system (system_a)
 	{
 	}
 	void run ()

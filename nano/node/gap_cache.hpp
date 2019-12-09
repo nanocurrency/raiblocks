@@ -41,11 +41,11 @@ public:
 	nano::uint128_t bootstrap_threshold ();
 	size_t size ();
 	boost::multi_index_container<
-	nano::gap_information,
-	boost::multi_index::indexed_by<
-	boost::multi_index::ordered_non_unique<boost::multi_index::member<gap_information, std::chrono::steady_clock::time_point, &gap_information::arrival>>,
-	boost::multi_index::hashed_unique<boost::multi_index::member<gap_information, nano::block_hash, &gap_information::hash>>>>
-	blocks;
+		nano::gap_information,
+		boost::multi_index::indexed_by<
+			boost::multi_index::ordered_non_unique<boost::multi_index::member<gap_information, std::chrono::steady_clock::time_point, &gap_information::arrival>>,
+			boost::multi_index::hashed_unique<boost::multi_index::member<gap_information, nano::block_hash, &gap_information::hash>>>>
+		blocks;
 	size_t const max = 256;
 	std::mutex mutex;
 	nano::node & node;

@@ -54,15 +54,15 @@ nano::error nano::rpc_secure_config::deserialize_toml (nano::tomlconfig & toml)
 	return toml.get_error ();
 }
 
-nano::rpc_config::rpc_config () :
-address (boost::asio::ip::address_v6::loopback ().to_string ())
+nano::rpc_config::rpc_config ()
+	: address (boost::asio::ip::address_v6::loopback ().to_string ())
 {
 }
 
-nano::rpc_config::rpc_config (uint16_t port_a, bool enable_control_a) :
-address (boost::asio::ip::address_v6::loopback ().to_string ()),
-port (port_a),
-enable_control (enable_control_a)
+nano::rpc_config::rpc_config (uint16_t port_a, bool enable_control_a)
+	: address (boost::asio::ip::address_v6::loopback ().to_string ())
+	, port (port_a)
+	, enable_control (enable_control_a)
 {
 }
 
@@ -201,8 +201,8 @@ nano::error nano::rpc_config::deserialize_toml (nano::tomlconfig & toml)
 	return toml.get_error ();
 }
 
-nano::rpc_process_config::rpc_process_config () :
-ipc_address (boost::asio::ip::address_v6::loopback ().to_string ())
+nano::rpc_process_config::rpc_process_config ()
+	: ipc_address (boost::asio::ip::address_v6::loopback ().to_string ())
 {
 }
 
@@ -218,8 +218,8 @@ nano::error read_rpc_config_toml (boost::filesystem::path const & data_path_a, n
 		if (boost::filesystem::exists (toml_config_path))
 		{
 			error = "Both json and toml rpc configuration files exists. "
-			        "Either remove the config.json file and restart, or remove "
-			        "the config-rpc.toml file to start migration on next launch.";
+					"Either remove the config.json file and restart, or remove "
+					"the config-rpc.toml file to start migration on next launch.";
 		}
 		else
 		{

@@ -71,9 +71,9 @@ nano::tcp_endpoint nano::transport::map_endpoint_to_tcp (nano::endpoint const & 
 	return nano::tcp_endpoint (endpoint_a.address (), endpoint_a.port ());
 }
 
-nano::transport::channel::channel (nano::node & node_a) :
-limiter (node_a.config.bandwidth_limit),
-node (node_a)
+nano::transport::channel::channel (nano::node & node_a)
+	: limiter (node_a.config.bandwidth_limit)
+	, node (node_a)
 {
 	set_network_version (node_a.network_params.protocol.protocol_version);
 }
@@ -209,11 +209,11 @@ bool nano::transport::reserved_address (nano::endpoint const & endpoint_a, bool 
 
 using namespace std::chrono_literals;
 
-nano::bandwidth_limiter::bandwidth_limiter (const size_t limit_a) :
-next_trend (std::chrono::steady_clock::now () + 50ms),
-limit (limit_a),
-rate (0),
-trended_rate (0)
+nano::bandwidth_limiter::bandwidth_limiter (const size_t limit_a)
+	: next_trend (std::chrono::steady_clock::now () + 50ms)
+	, limit (limit_a)
+	, rate (0)
+	, trended_rate (0)
 {
 }
 

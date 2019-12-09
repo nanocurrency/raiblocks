@@ -108,48 +108,48 @@ std::unique_ptr<seq_con_info_component> collect_seq_con_info (block_processor & 
 }
 }
 
-nano::node::node (boost::asio::io_context & io_ctx_a, uint16_t peering_port_a, boost::filesystem::path const & application_path_a, nano::alarm & alarm_a, nano::logging const & logging_a, nano::work_pool & work_a, nano::node_flags flags_a) :
-node (io_ctx_a, application_path_a, alarm_a, nano::node_config (peering_port_a, logging_a), work_a, flags_a)
+nano::node::node (boost::asio::io_context & io_ctx_a, uint16_t peering_port_a, boost::filesystem::path const & application_path_a, nano::alarm & alarm_a, nano::logging const & logging_a, nano::work_pool & work_a, nano::node_flags flags_a)
+	: node (io_ctx_a, application_path_a, alarm_a, nano::node_config (peering_port_a, logging_a), work_a, flags_a)
 {
 }
 
-nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path const & application_path_a, nano::alarm & alarm_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a) :
-io_ctx (io_ctx_a),
-node_initialized_latch (1),
-config (config_a),
-stats (config.stat_config),
-flags (flags_a),
-alarm (alarm_a),
-work (work_a),
-distributed_work (*this),
-logger (config_a.logging.min_time_between_log_output),
-store_impl (nano::make_store (logger, application_path_a, flags.read_only, true, config_a.rocksdb_config, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_max_dbs, flags.sideband_batch_size, config_a.backup_before_upgrade, config_a.rocksdb_config.enable)),
-store (*store_impl),
-wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_max_dbs)),
-wallets_store (*wallets_store_impl),
-gap_cache (*this),
-ledger (store, stats, flags_a.cache_representative_weights_from_frontiers),
-checker (config.signature_checker_threads),
-network (*this, config.peering_port),
-bootstrap_initiator (*this),
-bootstrap (config.peering_port, *this),
-application_path (application_path_a),
-port_mapping (*this),
-vote_processor (checker, active, store, observers, stats, config, logger, online_reps, ledger, network_params),
-rep_crawler (*this),
-warmed_up (0),
-block_processor (*this, write_database_queue),
-block_processor_thread ([this]() {
-	nano::thread_role::set (nano::thread_role::name::block_processing);
-	this->block_processor.process_blocks ();
-}),
-online_reps (ledger, network_params, config.online_weight_minimum.number ()),
-vote_uniquer (block_uniquer),
-active (*this),
-confirmation_height_processor (pending_confirmation_height, ledger, active, write_database_queue, config.conf_height_processor_batch_min_time, logger),
-payment_observer_processor (observers.blocks),
-wallets (wallets_store.init_error (), *this),
-startup_time (std::chrono::steady_clock::now ())
+nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path const & application_path_a, nano::alarm & alarm_a, nano::node_config const & config_a, nano::work_pool & work_a, nano::node_flags flags_a)
+	: io_ctx (io_ctx_a)
+	, node_initialized_latch (1)
+	, config (config_a)
+	, stats (config.stat_config)
+	, flags (flags_a)
+	, alarm (alarm_a)
+	, work (work_a)
+	, distributed_work (*this)
+	, logger (config_a.logging.min_time_between_log_output)
+	, store_impl (nano::make_store (logger, application_path_a, flags.read_only, true, config_a.rocksdb_config, config_a.diagnostics_config.txn_tracking, config_a.block_processor_batch_max_time, config_a.lmdb_max_dbs, flags.sideband_batch_size, config_a.backup_before_upgrade, config_a.rocksdb_config.enable))
+	, store (*store_impl)
+	, wallets_store_impl (std::make_unique<nano::mdb_wallets_store> (application_path_a / "wallets.ldb", config_a.lmdb_max_dbs))
+	, wallets_store (*wallets_store_impl)
+	, gap_cache (*this)
+	, ledger (store, stats, flags_a.cache_representative_weights_from_frontiers)
+	, checker (config.signature_checker_threads)
+	, network (*this, config.peering_port)
+	, bootstrap_initiator (*this)
+	, bootstrap (config.peering_port, *this)
+	, application_path (application_path_a)
+	, port_mapping (*this)
+	, vote_processor (checker, active, store, observers, stats, config, logger, online_reps, ledger, network_params)
+	, rep_crawler (*this)
+	, warmed_up (0)
+	, block_processor (*this, write_database_queue)
+	, block_processor_thread ([this]() {
+		nano::thread_role::set (nano::thread_role::name::block_processing);
+		this->block_processor.process_blocks ();
+	})
+	, online_reps (ledger, network_params, config.online_weight_minimum.number ())
+	, vote_uniquer (block_uniquer)
+	, active (*this)
+	, confirmation_height_processor (pending_confirmation_height, ledger, active, write_database_queue, config.conf_height_processor_batch_min_time, logger)
+	, payment_observer_processor (observers.blocks)
+	, wallets (wallets_store.init_error (), *this)
+	, startup_time (std::chrono::steady_clock::now ())
 {
 	if (!init_error ())
 	{
@@ -559,24 +559,24 @@ void nano::node::process_fork (nano::transaction const & transaction_a, std::sha
 		{
 			std::weak_ptr<nano::node> this_w (shared_from_this ());
 			if (!active.start (ledger_block, false, [this_w, root](std::shared_ptr<nano::block>) {
-				    if (auto this_l = this_w.lock ())
-				    {
-					    auto attempt (this_l->bootstrap_initiator.current_attempt ());
-					    if (attempt && attempt->mode == nano::bootstrap_mode::legacy)
-					    {
-						    auto transaction (this_l->store.tx_begin_read ());
-						    auto account (this_l->ledger.store.frontier_get (transaction, root));
-						    if (!account.is_zero ())
-						    {
-							    attempt->requeue_pull (nano::pull_info (account, root, root));
-						    }
-						    else if (this_l->ledger.store.account_exists (transaction, root))
-						    {
-							    attempt->requeue_pull (nano::pull_info (root, nano::block_hash (0), nano::block_hash (0)));
-						    }
-					    }
-				    }
-			    }))
+					if (auto this_l = this_w.lock ())
+					{
+						auto attempt (this_l->bootstrap_initiator.current_attempt ());
+						if (attempt && attempt->mode == nano::bootstrap_mode::legacy)
+						{
+							auto transaction (this_l->store.tx_begin_read ());
+							auto account (this_l->ledger.store.frontier_get (transaction, root));
+							if (!account.is_zero ())
+							{
+								attempt->requeue_pull (nano::pull_info (account, root, root));
+							}
+							else if (this_l->ledger.store.account_exists (transaction, root))
+							{
+								attempt->requeue_pull (nano::pull_info (root, nano::block_hash (0), nano::block_hash (0)));
+							}
+						}
+					}
+				}))
 			{
 				logger.always_log (boost::str (boost::format ("Resolving fork between our block: %1% and block %2% both with root %3%") % ledger_block->hash ().to_string () % block_a->hash ().to_string () % block_a->root ().to_string ()));
 				network.broadcast_confirm_req (ledger_block);
@@ -1106,11 +1106,11 @@ namespace
 class confirmed_visitor : public nano::block_visitor
 {
 public:
-	confirmed_visitor (nano::transaction const & transaction_a, nano::node & node_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a) :
-	transaction (transaction_a),
-	node (node_a),
-	block (block_a),
-	hash (hash_a)
+	confirmed_visitor (nano::transaction const & transaction_a, nano::node & node_a, std::shared_ptr<nano::block> const & block_a, nano::block_hash const & hash_a)
+		: transaction (transaction_a)
+		, node (node_a)
+		, block (block_a)
+		, hash (hash_a)
 	{
 	}
 	virtual ~confirmed_visitor () = default;
@@ -1339,12 +1339,12 @@ bool nano::node::init_error () const
 	return store.init_error () || wallets_store.init_error ();
 }
 
-nano::inactive_node::inactive_node (boost::filesystem::path const & path_a, uint16_t peering_port_a, nano::node_flags const & node_flags) :
-path (path_a),
-io_context (std::make_shared<boost::asio::io_context> ()),
-alarm (*io_context),
-work (1),
-peering_port (peering_port_a)
+nano::inactive_node::inactive_node (boost::filesystem::path const & path_a, uint16_t peering_port_a, nano::node_flags const & node_flags)
+	: path (path_a)
+	, io_context (std::make_shared<boost::asio::io_context> ())
+	, alarm (*io_context)
+	, work (1)
+	, peering_port (peering_port_a)
 {
 	boost::system::error_code error_chmod;
 

@@ -13,8 +13,8 @@ template <typename Mutex>
 class lock_guard final
 {
 public:
-	explicit lock_guard (Mutex & mutex_a) :
-	guard (mutex_a)
+	explicit lock_guard (Mutex & mutex_a)
+		: guard (mutex_a)
 	{
 	}
 

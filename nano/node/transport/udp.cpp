@@ -7,10 +7,10 @@
 
 #include <boost/format.hpp>
 
-nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a) :
-channel (channels_a.node),
-endpoint (endpoint_a),
-channels (channels_a)
+nano::transport::channel_udp::channel_udp (nano::transport::udp_channels & channels_a, nano::endpoint const & endpoint_a, uint8_t protocol_version_a)
+	: channel (channels_a.node)
+	, endpoint (endpoint_a)
+	, channels (channels_a)
 {
 	set_network_version (protocol_version_a);
 	assert (endpoint_a.address ().is_v6 ());
@@ -69,10 +69,10 @@ std::string nano::transport::channel_udp::to_string () const
 	return boost::str (boost::format ("%1%") % endpoint);
 }
 
-nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_a) :
-node (node_a),
-strand (node_a.io_ctx.get_executor ()),
-socket (node_a.io_ctx, nano::endpoint (boost::asio::ip::address_v6::any (), port_a))
+nano::transport::udp_channels::udp_channels (nano::node & node_a, uint16_t port_a)
+	: node (node_a)
+	, strand (node_a.io_ctx.get_executor ())
+	, socket (node_a.io_ctx, nano::endpoint (boost::asio::ip::address_v6::any (), port_a))
 {
 	boost::system::error_code ec;
 	auto port (socket.local_endpoint (ec).port ());
@@ -87,10 +87,10 @@ socket (node_a.io_ctx, nano::endpoint (boost::asio::ip::address_v6::any (), port
 void nano::transport::udp_channels::send (nano::shared_const_buffer const & buffer_a, nano::endpoint endpoint_a, std::function<void(boost::system::error_code const &, size_t)> const & callback_a)
 {
 	boost::asio::post (strand,
-	[this, buffer_a, endpoint_a, callback_a]() {
-		this->socket.async_send_to (buffer_a, endpoint_a,
-		boost::asio::bind_executor (strand, callback_a));
-	});
+		[this, buffer_a, endpoint_a, callback_a]() {
+			this->socket.async_send_to (buffer_a, endpoint_a,
+				boost::asio::bind_executor (strand, callback_a));
+		});
 }
 
 std::shared_ptr<nano::transport::channel_udp> nano::transport::udp_channels::insert (nano::endpoint const & endpoint_a, unsigned network_version_a)
@@ -186,7 +186,7 @@ bool nano::transport::udp_channels::store_all (bool clear_peers)
 		nano::lock_guard<std::mutex> lock (mutex);
 		endpoints.reserve (channels.size ());
 		std::transform (channels.begin (), channels.end (),
-		std::back_inserter (endpoints), [](const auto & channel) { return channel.endpoint (); });
+			std::back_inserter (endpoints), [](const auto & channel) { return channel.endpoint (); });
 	}
 	bool result (false);
 	if (!endpoints.empty ())
@@ -272,30 +272,30 @@ void nano::transport::udp_channels::receive ()
 	auto data (node.network.buffer_container.allocate ());
 
 	socket.async_receive_from (boost::asio::buffer (data->buffer, nano::network::buffer_size), data->endpoint,
-	boost::asio::bind_executor (strand,
-	[this, data](boost::system::error_code const & error, std::size_t size_a) {
-		if (!error && !stopped)
-		{
-			data->size = size_a;
-			this->node.network.buffer_container.enqueue (data);
-			this->receive ();
-		}
-		else
-		{
-			this->node.network.buffer_container.release (data);
-			if (error)
-			{
-				if (this->node.config.logging.network_logging ())
+		boost::asio::bind_executor (strand,
+			[this, data](boost::system::error_code const & error, std::size_t size_a) {
+				if (!error && !stopped)
 				{
-					this->node.logger.try_log (boost::str (boost::format ("UDP Receive error: %1%") % error.message ()));
+					data->size = size_a;
+					this->node.network.buffer_container.enqueue (data);
+					this->receive ();
 				}
-			}
-			if (!stopped)
-			{
-				this->node.alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (5), [this]() { this->receive (); });
-			}
-		}
-	}));
+				else
+				{
+					this->node.network.buffer_container.release (data);
+					if (error)
+					{
+						if (this->node.config.logging.network_logging ())
+						{
+							this->node.logger.try_log (boost::str (boost::format ("UDP Receive error: %1%") % error.message ()));
+						}
+					}
+					if (!stopped)
+					{
+						this->node.alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (5), [this]() { this->receive (); });
+					}
+				}
+			}));
 }
 
 void nano::transport::udp_channels::start ()
@@ -350,9 +350,9 @@ namespace
 class udp_message_visitor : public nano::message_visitor
 {
 public:
-	udp_message_visitor (nano::node & node_a, nano::endpoint const & endpoint_a) :
-	node (node_a),
-	endpoint (endpoint_a)
+	udp_message_visitor (nano::node & node_a, nano::endpoint const & endpoint_a)
+		: node (node_a)
+		, endpoint (endpoint_a)
 	{
 	}
 	void keepalive (nano::keepalive const & message_a) override

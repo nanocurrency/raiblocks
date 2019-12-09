@@ -154,18 +154,18 @@ int main (int argc, char * const * argv)
 					nano::keypair genesis (key.to_string ());
 					nano::work_pool work (std::numeric_limits<unsigned>::max ());
 					std::cout << "Genesis: " << genesis.prv.data.to_string () << "\n"
-					          << "Public: " << genesis.pub.to_string () << "\n"
-					          << "Account: " << genesis.pub.to_account () << "\n";
+							  << "Public: " << genesis.pub.to_string () << "\n"
+							  << "Account: " << genesis.pub.to_account () << "\n";
 					nano::keypair landing;
 					std::cout << "Landing: " << landing.prv.data.to_string () << "\n"
-					          << "Public: " << landing.pub.to_string () << "\n"
-					          << "Account: " << landing.pub.to_account () << "\n";
+							  << "Public: " << landing.pub.to_string () << "\n"
+							  << "Account: " << landing.pub.to_account () << "\n";
 					for (auto i (0); i != 32; ++i)
 					{
 						nano::keypair rep;
 						std::cout << "Rep" << i << ": " << rep.prv.data.to_string () << "\n"
-						          << "Public: " << rep.pub.to_string () << "\n"
-						          << "Account: " << rep.pub.to_account () << "\n";
+								  << "Public: " << rep.pub.to_string () << "\n"
+								  << "Account: " << rep.pub.to_account () << "\n";
 					}
 					nano::uint128_t balance (std::numeric_limits<nano::uint128_t>::max ());
 					nano::open_block genesis_block (reinterpret_cast<const nano::block_hash &> (genesis.pub), genesis.pub, genesis.pub, genesis.prv, genesis.pub, *work.generate (genesis.pub));
@@ -397,7 +397,7 @@ int main (int argc, char * const * argv)
 							nano::work_pool work_pool (std::numeric_limits<unsigned>::max (), std::chrono::nanoseconds (0), opencl ? [&opencl](nano::root const & root_a, uint64_t difficulty_a, std::atomic<int> &) {
 								return opencl->generate_work (root_a, difficulty_a);
 							}
-							                                                                                                       : std::function<boost::optional<uint64_t> (nano::root const &, uint64_t, std::atomic<int> &)> (nullptr));
+																																   : std::function<boost::optional<uint64_t> (nano::root const &, uint64_t, std::atomic<int> &)> (nullptr));
 							nano::change_block block (0, 0, nano::keypair ().prv, 0, 0);
 							std::cerr << boost::str (boost::format ("Starting OpenCL generation profiling. Platform: %1%. Device: %2%. Threads: %3%. Difficulty: %4$#x\n") % platform % device % threads % difficulty);
 							for (uint64_t i (0); true; ++i)
@@ -412,14 +412,14 @@ int main (int argc, char * const * argv)
 						else
 						{
 							std::cout << "Not available device id\n"
-							          << std::endl;
+									  << std::endl;
 							result = -1;
 						}
 					}
 					else
 					{
 						std::cout << "Not available platform id\n"
-						          << std::endl;
+								  << std::endl;
 						result = -1;
 					}
 				}
@@ -439,7 +439,7 @@ int main (int argc, char * const * argv)
 
 				boost::stacktrace::stacktrace st = boost::stacktrace::stacktrace::from_dump (ifs);
 				std::cout << "Latest crash backtrace:\n"
-				          << st << std::endl;
+						  << st << std::endl;
 			}
 		}
 		else if (vm.count ("debug_verify_profile"))
@@ -517,27 +517,27 @@ int main (int argc, char * const * argv)
 				genesis_balance = genesis_balance - 1000000000;
 
 				auto send = builder.state ()
-				            .account (test_params.ledger.test_genesis_key.pub)
-				            .previous (genesis_latest)
-				            .representative (test_params.ledger.test_genesis_key.pub)
-				            .balance (genesis_balance)
-				            .link (keys[i].pub)
-				            .sign (keys[i].prv, keys[i].pub)
-				            .work (*work.generate (genesis_latest))
-				            .build ();
+								.account (test_params.ledger.test_genesis_key.pub)
+								.previous (genesis_latest)
+								.representative (test_params.ledger.test_genesis_key.pub)
+								.balance (genesis_balance)
+								.link (keys[i].pub)
+								.sign (keys[i].prv, keys[i].pub)
+								.work (*work.generate (genesis_latest))
+								.build ();
 
 				genesis_latest = send->hash ();
 				blocks.push_back (std::move (send));
 
 				auto open = builder.state ()
-				            .account (keys[i].pub)
-				            .previous (0)
-				            .representative (keys[i].pub)
-				            .balance (balances[i])
-				            .link (genesis_latest)
-				            .sign (test_params.ledger.test_genesis_key.prv, test_params.ledger.test_genesis_key.pub)
-				            .work (*work.generate (keys[i].pub))
-				            .build ();
+								.account (keys[i].pub)
+								.previous (0)
+								.representative (keys[i].pub)
+								.balance (balances[i])
+								.link (genesis_latest)
+								.sign (test_params.ledger.test_genesis_key.prv, test_params.ledger.test_genesis_key.pub)
+								.work (*work.generate (keys[i].pub))
+								.build ();
 
 				frontiers[i] = open->hash ();
 				blocks.push_back (std::move (open));
@@ -551,14 +551,14 @@ int main (int argc, char * const * argv)
 					--balances[j];
 
 					auto send = builder.state ()
-					            .account (keys[j].pub)
-					            .previous (frontiers[j])
-					            .representative (keys[j].pub)
-					            .balance (balances[j])
-					            .link (keys[other].pub)
-					            .sign (keys[j].prv, keys[j].pub)
-					            .work (*work.generate (frontiers[j]))
-					            .build ();
+									.account (keys[j].pub)
+									.previous (frontiers[j])
+									.representative (keys[j].pub)
+									.balance (balances[j])
+									.link (keys[other].pub)
+									.sign (keys[j].prv, keys[j].pub)
+									.work (*work.generate (frontiers[j]))
+									.build ();
 
 					frontiers[j] = send->hash ();
 					blocks.push_back (std::move (send));
@@ -566,14 +566,14 @@ int main (int argc, char * const * argv)
 					++balances[other];
 
 					auto receive = builder.state ()
-					               .account (keys[other].pub)
-					               .previous (frontiers[other])
-					               .representative (keys[other].pub)
-					               .balance (balances[other])
-					               .link (static_cast<nano::block_hash const &> (frontiers[j]))
-					               .sign (keys[other].prv, keys[other].pub)
-					               .work (*work.generate (frontiers[other]))
-					               .build ();
+									   .account (keys[other].pub)
+									   .previous (frontiers[other])
+									   .representative (keys[other].pub)
+									   .balance (balances[other])
+									   .link (static_cast<nano::block_hash const &> (frontiers[j]))
+									   .sign (keys[other].prv, keys[other].pub)
+									   .work (*work.generate (frontiers[other]))
+									   .build ();
 
 					frontiers[other] = receive->hash ();
 					blocks.push_back (std::move (receive));
@@ -626,27 +626,27 @@ int main (int argc, char * const * argv)
 				genesis_balance = genesis_balance - balance;
 
 				auto send = builder.state ()
-				            .account (test_params.ledger.test_genesis_key.pub)
-				            .previous (genesis_latest)
-				            .representative (test_params.ledger.test_genesis_key.pub)
-				            .balance (genesis_balance)
-				            .link (keys[i].pub)
-				            .sign (test_params.ledger.test_genesis_key.prv, test_params.ledger.test_genesis_key.pub)
-				            .work (*work.generate (genesis_latest))
-				            .build ();
+								.account (test_params.ledger.test_genesis_key.pub)
+								.previous (genesis_latest)
+								.representative (test_params.ledger.test_genesis_key.pub)
+								.balance (genesis_balance)
+								.link (keys[i].pub)
+								.sign (test_params.ledger.test_genesis_key.prv, test_params.ledger.test_genesis_key.pub)
+								.work (*work.generate (genesis_latest))
+								.build ();
 
 				genesis_latest = send->hash ();
 				node->ledger.process (transaction, *send);
 
 				auto open = builder.state ()
-				            .account (keys[i].pub)
-				            .previous (0)
-				            .representative (keys[i].pub)
-				            .balance (balance)
-				            .link (genesis_latest)
-				            .sign (keys[i].prv, keys[i].pub)
-				            .work (*work.generate (keys[i].pub))
-				            .build ();
+								.account (keys[i].pub)
+								.previous (0)
+								.representative (keys[i].pub)
+								.balance (balance)
+								.link (genesis_latest)
+								.sign (keys[i].prv, keys[i].pub)
+								.work (*work.generate (keys[i].pub))
+								.build ();
 
 				node->ledger.process (transaction, *open);
 			}
@@ -658,14 +658,14 @@ int main (int argc, char * const * argv)
 				nano::keypair destination;
 
 				auto send = builder.state ()
-				            .account (test_params.ledger.test_genesis_key.pub)
-				            .previous (genesis_latest)
-				            .representative (test_params.ledger.test_genesis_key.pub)
-				            .balance (genesis_balance)
-				            .link (destination.pub)
-				            .sign (test_params.ledger.test_genesis_key.prv, test_params.ledger.test_genesis_key.pub)
-				            .work (*work.generate (genesis_latest))
-				            .build ();
+								.account (test_params.ledger.test_genesis_key.pub)
+								.previous (genesis_latest)
+								.representative (test_params.ledger.test_genesis_key.pub)
+								.balance (genesis_balance)
+								.link (destination.pub)
+								.sign (test_params.ledger.test_genesis_key.prv, test_params.ledger.test_genesis_key.pub)
+								.work (*work.generate (genesis_latest))
+								.build ();
 
 				genesis_latest = send->hash ();
 				blocks.push_back (std::move (send));
@@ -1119,7 +1119,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("version"))
 		{
 			std::cout << "Version " << NANO_VERSION_STRING << "\n"
-			          << "Build Info " << BUILD_INFO << std::endl;
+					  << "Build Info " << BUILD_INFO << std::endl;
 		}
 		else
 		{
