@@ -18,13 +18,13 @@
 
 using namespace std::chrono_literals;
 
-nano::telemetry::telemetry (nano::network & network_a, nano::alarm & alarm_a, nano::worker & worker_a, nano::observer_set<nano::telemetry_data const &, nano::endpoint const &> & observers_a, nano::stat & stats_a, nano::network_params & network_params_a, bool disable_ongoing_requests_a) :
+nano::telemetry::telemetry (nano::network & network_a, nano::alarm & alarm_a, nano::worker & worker_a, nano::observer_set<nano::telemetry_data const &, nano::endpoint const &> & observers_a, nano::stat & stats_a, nano::environment_constants & constants_a, bool disable_ongoing_requests_a) :
 network (network_a),
 alarm (alarm_a),
 worker (worker_a),
 observers (observers_a),
 stats (stats_a),
-network_params (network_params_a),
+constants (constants_a),
 disable_ongoing_requests (disable_ongoing_requests_a)
 {
 }
@@ -93,7 +93,7 @@ bool nano::telemetry::verify_message (nano::telemetry_ack const & message_a, nan
 		if (!remove_channel)
 		{
 			// Check for different genesis blocks
-			remove_channel = (message_a.data.genesis_block != network_params.ledger.genesis_hash);
+			remove_channel = (message_a.data.genesis_block != constants.ledger.genesis_hash);
 			if (remove_channel)
 			{
 				stats.inc (nano::stat::type::telemetry, nano::stat::detail::different_genesis_hash);
@@ -176,7 +176,7 @@ void nano::telemetry::ongoing_req_all_peers (std::chrono::milliseconds next_requ
 
 				{
 					// Copy peers to the multi index container so can get better asymptotic complexity in future operations
-					auto temp_peers = this_l->network.list (std::numeric_limits<size_t>::max (), this_l->network_params.protocol.telemetry_protocol_version_min);
+					auto temp_peers = this_l->network.list (std::numeric_limits<size_t>::max (), this_l->constants.protocol.telemetry_protocol_version_min);
 					peers.insert (temp_peers.begin (), temp_peers.end ());
 				}
 
@@ -277,7 +277,7 @@ void nano::telemetry::get_metrics_single_peer_async (std::shared_ptr<nano::trans
 
 	if (!stopped)
 	{
-		if (channel_a && (channel_a->get_network_version () >= network_params.protocol.telemetry_protocol_version_min))
+		if (channel_a && (channel_a->get_network_version () >= constants.protocol.telemetry_protocol_version_min))
 		{
 			auto add_callback_async = [& worker = this->worker, &callback_a](telemetry_data const & telemetry_data_a, nano::endpoint const & endpoint_a) {
 				telemetry_data_response telemetry_data_response_l{ telemetry_data_a, endpoint_a, false };
@@ -344,7 +344,7 @@ nano::telemetry_data_response nano::telemetry::get_metrics_single_peer (std::sha
 void nano::telemetry::fire_request_message (std::shared_ptr<nano::transport::channel> const & channel_a)
 {
 	// Fire off a telemetry request to all passed in channels
-	debug_assert (channel_a->get_network_version () >= network_params.protocol.telemetry_protocol_version_min);
+	debug_assert (channel_a->get_network_version () >= constants.protocol.telemetry_protocol_version_min);
 
 	uint64_t round_l;
 	{
@@ -628,17 +628,17 @@ nano::telemetry_data nano::consolidate_telemetry_data (std::vector<nano::telemet
 	return consolidated_data;
 }
 
-nano::telemetry_data nano::local_telemetry_data (nano::block_store & store_a, nano::ledger_cache const & ledger_cache_a, nano::network & network_a, uint64_t bandwidth_limit_a, nano::network_params const & network_params_a, std::chrono::steady_clock::time_point statup_time_a, uint64_t active_difficulty_a, nano::keypair const & node_id_a)
+nano::telemetry_data nano::local_telemetry_data (nano::block_store & store_a, nano::ledger_cache const & ledger_cache_a, nano::network & network_a, uint64_t bandwidth_limit_a, nano::environment_constants const & constants_a, std::chrono::steady_clock::time_point statup_time_a, uint64_t active_difficulty_a, nano::keypair const & node_id_a)
 {
 	nano::telemetry_data telemetry_data;
 	telemetry_data.node_id = node_id_a.pub;
 	telemetry_data.block_count = ledger_cache_a.block_count;
 	telemetry_data.cemented_count = ledger_cache_a.cemented_count;
 	telemetry_data.bandwidth_cap = bandwidth_limit_a;
-	telemetry_data.protocol_version = network_params_a.protocol.protocol_version;
+	telemetry_data.protocol_version = constants_a.protocol.protocol_version;
 	telemetry_data.uptime = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::steady_clock::now () - statup_time_a).count ();
 	telemetry_data.unchecked_count = store_a.unchecked_count (store_a.tx_begin_read ());
-	telemetry_data.genesis_block = network_params_a.ledger.genesis_hash;
+	telemetry_data.genesis_block = constants_a.ledger.genesis_hash;
 	telemetry_data.peer_count = nano::narrow_cast<decltype (telemetry_data.peer_count)> (network_a.size ());
 	telemetry_data.account_count = ledger_cache_a.account_count;
 	telemetry_data.major_version = nano::get_major_node_version ();

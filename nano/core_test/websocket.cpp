@@ -21,7 +21,7 @@ using namespace std::chrono_literals;
 TEST (websocket, subscription_edge)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -52,17 +52,16 @@ TEST (websocket, subscription_edge)
 TEST (websocket, active_difficulty)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
-	nano::node_flags node_flags;
 	// Disable auto-updating active difficulty (multiplier) to prevent intermittent failures
-	node_flags.disable_request_loop = true;
-	auto node1 (system.add_node (config, node_flags));
+	config.flags.disable_request_loop = true;
+	auto node1 (system.add_node (config));
 
 	// "Start" epoch 2
 	node1->ledger.cache.epoch_2_started = true;
-	ASSERT_EQ (node1->default_difficulty (nano::work_version::work_1), node1->network_params.network.publish_thresholds.epoch_2);
+	ASSERT_EQ (node1->default_difficulty (nano::work_version::work_1), node1->env.constants.network.publish_thresholds.epoch_2);
 
 	ASSERT_EQ (0, node1->websocket_server->subscriber_count (nano::websocket::topic::active_difficulty));
 
@@ -114,7 +113,7 @@ TEST (websocket, active_difficulty)
 TEST (websocket, confirmation)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -151,7 +150,7 @@ TEST (websocket, confirmation)
 	{
 		nano::block_hash previous (node1->latest (nano::dev_genesis_key.pub));
 		balance -= send_amount;
-		auto send (std::make_shared<nano::send_block> (previous, key.pub, balance, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+		auto send (std::make_shared<nano::send_block> (previous, key.pub, balance, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 		node1->process_active (send);
 	}
 
@@ -161,7 +160,7 @@ TEST (websocket, confirmation)
 	{
 		nano::block_hash previous (node1->latest (nano::dev_genesis_key.pub));
 		balance -= send_amount;
-		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 		node1->process_active (send);
 	}
 
@@ -172,7 +171,7 @@ TEST (websocket, confirmation)
 TEST (websocket, stopped_election)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -193,7 +192,7 @@ TEST (websocket, stopped_election)
 	// Create election, then erase it, causing a websocket message to be emitted
 	nano::keypair key1;
 	nano::genesis genesis;
-	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key1.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (genesis.hash ())));
+	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key1.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (genesis.hash ())));
 	nano::publish publish1 (send1);
 	auto channel1 (node1->network.udp_channels.create (node1->network.endpoint ()));
 	node1->network.process_message (publish1, channel1);
@@ -215,7 +214,7 @@ TEST (websocket, stopped_election)
 TEST (websocket, confirmation_options)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -242,7 +241,7 @@ TEST (websocket, confirmation_options)
 	nano::block_hash previous (node1->latest (nano::dev_genesis_key.pub));
 	{
 		balance -= send_amount;
-		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 		node1->process_active (send);
 		previous = send->hash ();
 	}
@@ -265,7 +264,7 @@ TEST (websocket, confirmation_options)
 	// Quick-confirm another block
 	{
 		balance -= send_amount;
-		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 		node1->process_active (send);
 		previous = send->hash ();
 	}
@@ -316,7 +315,7 @@ TEST (websocket, confirmation_options)
 	// When filtering options are enabled, legacy blocks are always filtered
 	{
 		balance -= send_amount;
-		auto send (std::make_shared<nano::send_block> (previous, key.pub, balance, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+		auto send (std::make_shared<nano::send_block> (previous, key.pub, balance, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 		node1->process_active (send);
 		previous = send->hash ();
 	}
@@ -328,7 +327,7 @@ TEST (websocket, confirmation_options)
 TEST (websocket, confirmation_options_update)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -366,7 +365,7 @@ TEST (websocket, confirmation_options_update)
 	nano::genesis genesis;
 	nano::keypair key;
 	auto previous (node1->latest (nano::dev_genesis_key.pub));
-	auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, nano::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+	auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, nano::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 	node1->process_active (send);
 
 	// Wait for delete acknowledgement
@@ -374,7 +373,7 @@ TEST (websocket, confirmation_options_update)
 
 	// Confirm another block
 	previous = send->hash ();
-	auto send2 (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, nano::genesis_amount - 2 * nano::Gxrb_ratio, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+	auto send2 (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, nano::genesis_amount - 2 * nano::Gxrb_ratio, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 	node1->process_active (send2);
 
 	ASSERT_TIMELY (5s, future.wait_for (0s) == std::future_status::ready);
@@ -384,7 +383,7 @@ TEST (websocket, confirmation_options_update)
 TEST (websocket, vote)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -406,7 +405,7 @@ TEST (websocket, vote)
 	nano::keypair key;
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	nano::block_hash previous (node1->latest (nano::dev_genesis_key.pub));
-	auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, nano::genesis_amount - (node1->config.online_weight_minimum.number () + 1), key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+	auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, nano::genesis_amount - (node1->config.online_weight_minimum.number () + 1), key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 	node1->process_active (send);
 
 	ASSERT_TIMELY (5s, future.wait_for (0s) == std::future_status::ready);
@@ -424,7 +423,7 @@ TEST (websocket, vote)
 TEST (websocket, vote_options_type)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -466,7 +465,7 @@ TEST (websocket, vote_options_type)
 TEST (websocket, vote_options_representatives)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -499,7 +498,7 @@ TEST (websocket, vote_options_representatives)
 	auto confirm_block = [&]() {
 		nano::block_hash previous (node1->latest (nano::dev_genesis_key.pub));
 		balance -= send_amount;
-		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (previous)));
+		auto send (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, previous, nano::dev_genesis_key.pub, balance, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (previous)));
 		node1->process_active (send);
 	};
 	confirm_block ();
@@ -532,7 +531,7 @@ TEST (websocket, vote_options_representatives)
 TEST (websocket, work)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -602,7 +601,7 @@ TEST (websocket, work)
 TEST (websocket, bootstrap)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -652,7 +651,7 @@ TEST (websocket, bootstrap)
 TEST (websocket, bootstrap_exited)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -717,7 +716,7 @@ TEST (websocket, bootstrap_exited)
 TEST (websocket, ws_keepalive)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -736,17 +735,15 @@ TEST (websocket, ws_keepalive)
 TEST (websocket, telemetry)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
-	nano::node_flags node_flags;
-	node_flags.disable_initial_telemetry_requests = true;
-	node_flags.disable_ongoing_telemetry_requests = true;
-	auto node1 (system.add_node (config, node_flags));
-	config.peering_port = nano::get_available_port ();
+	config.flags.disable_initial_telemetry_requests = true;
+	config.flags.disable_ongoing_telemetry_requests = true;
+	auto node1 (system.add_node (config));
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
-	auto node2 (system.add_node (config, node_flags));
+	auto node2 (system.add_node (config));
 
 	wait_peer_connections (system);
 
@@ -783,7 +780,7 @@ TEST (websocket, telemetry)
 	nano::jsonconfig telemetry_contents (contents);
 	nano::telemetry_data telemetry_data;
 	telemetry_data.deserialize_json (telemetry_contents, false);
-	compare_default_telemetry_response_data (telemetry_data, node2->network_params, node2->config.bandwidth_limit, node2->active.active_difficulty (), node2->node_id);
+	compare_default_telemetry_response_data (telemetry_data, node2->env.constants, node2->config.bandwidth_limit, node2->active.active_difficulty (), node2->node_id);
 
 	ASSERT_EQ (contents.get<std::string> ("address"), node2->network.endpoint ().address ().to_string ());
 	ASSERT_EQ (contents.get<uint16_t> ("port"), node2->network.endpoint ().port ());
@@ -795,7 +792,7 @@ TEST (websocket, telemetry)
 TEST (websocket, new_unconfirmed_block)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.websocket_config.enabled = true;
 	config.websocket_config.port = nano::get_available_port ();
 	auto node1 (system.add_node (config));
@@ -815,7 +812,7 @@ TEST (websocket, new_unconfirmed_block)
 
 	// Process a new block
 	nano::genesis genesis;
-	auto send1 (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, genesis.hash (), nano::dev_genesis_key.pub, nano::genesis_amount - 1, nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (genesis.hash ())));
+	auto send1 (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, genesis.hash (), nano::dev_genesis_key.pub, nano::genesis_amount - 1, nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (genesis.hash ())));
 	ASSERT_EQ (nano::process_result::progress, node1->process_local (send1).code);
 
 	ASSERT_TIMELY (5s, future.wait_for (0s) == std::future_status::ready);

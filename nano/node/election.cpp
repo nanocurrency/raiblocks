@@ -14,7 +14,7 @@ int constexpr nano::election::confirmed_duration_factor;
 
 std::chrono::milliseconds nano::election::base_latency () const
 {
-	return node.network_params.network.is_dev_network () ? 25ms : 1000ms;
+	return node.env.constants.network.is_dev_network () ? 25ms : 1000ms;
 }
 
 nano::election_vote_result::election_vote_result (bool replay_a, bool processed_a)
@@ -31,7 +31,7 @@ status ({ block_a, 0, std::chrono::duration_cast<std::chrono::milliseconds> (std
 height (block_a->sideband ().height),
 root (block_a->root ())
 {
-	last_votes.emplace (node.network_params.random.not_an_account, nano::vote_info{ std::chrono::steady_clock::now (), 0, block_a->hash () });
+	last_votes.emplace (node.env.constants.random.not_an_account, nano::vote_info{ std::chrono::steady_clock::now (), 0, block_a->hash () });
 	blocks.emplace (block_a->hash (), block_a);
 	update_dependent ();
 }
@@ -327,7 +327,7 @@ void nano::election::log_votes (nano::tally_t const & tally_a) const
 	}
 	for (auto i (last_votes.begin ()), n (last_votes.end ()); i != n; ++i)
 	{
-		if (i->first != node.network_params.random.not_an_account)
+		if (i->first != node.env.constants.random.not_an_account)
 		{
 			tally << boost::str (boost::format ("%1%%2% %3% %4%") % line_end % i->first.to_account () % std::to_string (i->second.sequence) % i->second.hash.to_string ());
 		}
@@ -342,7 +342,7 @@ nano::election_vote_result nano::election::vote (nano::account rep, uint64_t seq
 	auto online_stake (node.online_reps.online_stake ());
 	auto weight (node.ledger.weight (rep));
 	auto should_process (false);
-	if (node.network_params.network.is_dev_network () || weight > node.minimum_principal_weight (online_stake))
+	if (node.env.constants.network.is_dev_network () || weight > node.minimum_principal_weight (online_stake))
 	{
 		unsigned int cooldown;
 		if (weight < online_stake / 100) // 0.1% to 1%

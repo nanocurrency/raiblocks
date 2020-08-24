@@ -55,7 +55,7 @@ private:
 	std::string get_config_port (std::string const &);
 	upnp_state upnp;
 	nano::node & node;
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	boost::asio::ip::address_v4 address;
 	std::array<mapping_protocol, 2> protocols;
 	uint64_t check_count{ 0 };

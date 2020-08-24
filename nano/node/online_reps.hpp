@@ -9,15 +9,15 @@
 
 namespace nano
 {
+class environment_constants;
 class ledger;
-class network_params;
 class transaction;
 
 /** Track online representatives and trend online weight */
 class online_reps final
 {
 public:
-	online_reps (nano::ledger & ledger_a, nano::network_params & network_params_a, nano::uint128_t minimum_a);
+	online_reps (nano::ledger & ledger_a, nano::environment_constants & constants_a, nano::uint128_t minimum_a);
 	/** Add voting account \p rep_account to the set of online representatives */
 	void observe (nano::account const & rep_account);
 	/** Called periodically to sample online weight */
@@ -31,7 +31,7 @@ private:
 	nano::uint128_t trend (nano::transaction &);
 	mutable std::mutex mutex;
 	nano::ledger & ledger;
-	nano::network_params & network_params;
+	nano::environment_constants & constants;
 	std::unordered_set<nano::account> reps;
 	nano::uint128_t online;
 	nano::uint128_t minimum;

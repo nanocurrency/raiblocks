@@ -53,11 +53,11 @@ void nano::bootstrap_initiator::bootstrap (nano::endpoint const & endpoint_a, bo
 {
 	if (add_to_peers)
 	{
-		if (!node.flags.disable_udp)
+		if (!node.config.flags.disable_udp)
 		{
-			node.network.udp_channels.insert (nano::transport::map_endpoint_to_v6 (endpoint_a), node.network_params.protocol.protocol_version);
+			node.network.udp_channels.insert (nano::transport::map_endpoint_to_v6 (endpoint_a), node.env.constants.protocol.protocol_version);
 		}
-		else if (!node.flags.disable_tcp_realtime)
+		else if (!node.config.flags.disable_tcp_realtime)
 		{
 			node.network.merge_peer (nano::transport::map_endpoint_to_v6 (endpoint_a));
 		}

@@ -44,7 +44,7 @@ TEST (message, keepalive_deserialize)
 
 TEST (message, publish_serialization)
 {
-	nano::network_params params;
+	nano::environment_constants constants;
 	nano::publish publish (std::make_shared<nano::send_block> (0, 1, 2, nano::keypair ().prv, 4, 5));
 	ASSERT_EQ (nano::block_type::send, publish.header.block_type ());
 	std::vector<uint8_t> bytes;
@@ -55,9 +55,9 @@ TEST (message, publish_serialization)
 	ASSERT_EQ (8, bytes.size ());
 	ASSERT_EQ (0x52, bytes[0]);
 	ASSERT_EQ (0x41, bytes[1]);
-	ASSERT_EQ (params.protocol.protocol_version, bytes[2]);
-	ASSERT_EQ (params.protocol.protocol_version, bytes[3]);
-	ASSERT_EQ (params.protocol.protocol_version_min (false), bytes[4]);
+	ASSERT_EQ (constants.protocol.protocol_version, bytes[2]);
+	ASSERT_EQ (constants.protocol.protocol_version, bytes[3]);
+	ASSERT_EQ (constants.protocol.protocol_version_min (false), bytes[4]);
 	ASSERT_EQ (static_cast<uint8_t> (nano::message_type::publish), bytes[5]);
 	ASSERT_EQ (0x00, bytes[6]); // extensions
 	ASSERT_EQ (static_cast<uint8_t> (nano::block_type::send), bytes[7]);
@@ -65,9 +65,9 @@ TEST (message, publish_serialization)
 	auto error (false);
 	nano::message_header header (error, stream);
 	ASSERT_FALSE (error);
-	ASSERT_EQ (params.protocol.protocol_version_min (false), header.version_min ());
-	ASSERT_EQ (params.protocol.protocol_version, header.version_using);
-	ASSERT_EQ (params.protocol.protocol_version, header.version_max);
+	ASSERT_EQ (constants.protocol.protocol_version_min (false), header.version_min ());
+	ASSERT_EQ (constants.protocol.protocol_version, header.version_using);
+	ASSERT_EQ (constants.protocol.protocol_version, header.version_max);
 	ASSERT_EQ (nano::message_type::publish, header.type);
 }
 

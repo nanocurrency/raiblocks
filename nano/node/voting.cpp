@@ -165,7 +165,7 @@ void nano::vote_generator::send (nano::unique_lock<std::mutex> & lock_a)
 			}
 			this->network.flood_vote_pr (vote);
 			this->network.flood_vote (vote, 2.0f);
-			this->vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (this->network.udp_channels, this->network.endpoint (), this->network_params.protocol.protocol_version));
+			this->vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (this->network.udp_channels, this->network.endpoint (), this->constants.protocol.protocol_version));
 		});
 	}
 	lock_a.lock ();

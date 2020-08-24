@@ -127,7 +127,7 @@ void nano::bulk_push_server::throttled_receive ()
 	else
 	{
 		auto this_l (shared_from_this ());
-		connection->node->alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (1), [this_l]() {
+		connection->node->env.alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (1), [this_l]() {
 			if (!this_l->connection->stopped)
 			{
 				this_l->throttled_receive ();

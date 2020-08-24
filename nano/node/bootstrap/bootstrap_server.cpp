@@ -151,7 +151,7 @@ void nano::bootstrap_server::stop ()
 void nano::bootstrap_server::receive ()
 {
 	// Increase timeout to receive TCP header (idle server socket)
-	socket->set_timeout (node->network_params.node.idle_timeout);
+	socket->set_timeout (node->env.constants.node.idle_timeout);
 	auto this_l (shared_from_this ());
 	socket->async_read (receive_buffer, 8, [this_l](boost::system::error_code const & ec, size_t size_a) {
 		// Set remote_endpoint
@@ -253,7 +253,7 @@ void nano::bootstrap_server::receive_header_action (boost::system::error_code co
 					{
 						// Only handle telemetry requests if they are outside of the cutoff time
 						auto is_very_first_message = last_telemetry_req == std::chrono::steady_clock::time_point{};
-						auto cache_exceeded = std::chrono::steady_clock::now () >= last_telemetry_req + nano::telemetry_cache_cutoffs::network_to_time (node->network_params.network);
+						auto cache_exceeded = std::chrono::steady_clock::now () >= last_telemetry_req + nano::telemetry_cache_cutoffs::network_to_time (node->env.constants.network);
 						if (is_very_first_message || cache_exceeded)
 						{
 							last_telemetry_req = std::chrono::steady_clock::now ();
@@ -307,7 +307,7 @@ void nano::bootstrap_server::receive_bulk_pull_action (boost::system::error_code
 			{
 				node->logger.try_log (boost::str (boost::format ("Received bulk pull for %1% down to %2%, maximum of %3%") % request->start.to_string () % request->end.to_string () % (request->count ? request->count : std::numeric_limits<double>::infinity ())));
 			}
-			if (is_bootstrap_connection () && !node->flags.disable_bootstrap_bulk_pull_server)
+			if (is_bootstrap_connection () && !node->config.flags.disable_bootstrap_bulk_pull_server)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -330,7 +330,7 @@ void nano::bootstrap_server::receive_bulk_pull_account_action (boost::system::er
 			{
 				node->logger.try_log (boost::str (boost::format ("Received bulk pull account for %1% with a minimum amount of %2%") % request->account.to_account () % nano::amount (request->minimum_amount).format_balance (nano::Mxrb_ratio, 10, true)));
 			}
-			if (is_bootstrap_connection () && !node->flags.disable_bootstrap_bulk_pull_server)
+			if (is_bootstrap_connection () && !node->config.flags.disable_bootstrap_bulk_pull_server)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -531,7 +531,7 @@ void nano::bootstrap_server::receive_node_id_handshake_action (boost::system::er
 		auto request (std::make_unique<nano::node_id_handshake> (error, stream, header_a));
 		if (!error)
 		{
-			if (type == nano::bootstrap_server_type::undefined && !node->flags.disable_tcp_realtime)
+			if (type == nano::bootstrap_server_type::undefined && !node->config.flags.disable_tcp_realtime)
 			{
 				add_request (std::unique_ptr<nano::message> (request.release ()));
 			}
@@ -567,7 +567,7 @@ void nano::bootstrap_server::finish_request ()
 	else
 	{
 		std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-		node->alarm.add (std::chrono::steady_clock::now () + (node->config.tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w]() {
+		node->env.alarm.add (std::chrono::steady_clock::now () + (node->config.tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w]() {
 			if (auto this_l = this_w.lock ())
 			{
 				this_l->timeout ();
@@ -748,7 +748,7 @@ void nano::bootstrap_server::run_next (nano::unique_lock<std::mutex> & lock_a)
 		if (timeout_check)
 		{
 			std::weak_ptr<nano::bootstrap_server> this_w (shared_from_this ());
-			node->alarm.add (std::chrono::steady_clock::now () + (node->config.tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w]() {
+			node->env.alarm.add (std::chrono::steady_clock::now () + (node->config.tcp_io_timeout * 2) + std::chrono::seconds (1), [this_w]() {
 				if (auto this_l = this_w.lock ())
 				{
 					this_l->timeout ();
@@ -760,7 +760,7 @@ void nano::bootstrap_server::run_next (nano::unique_lock<std::mutex> & lock_a)
 
 bool nano::bootstrap_server::is_bootstrap_connection ()
 {
-	if (type == nano::bootstrap_server_type::undefined && !node->flags.disable_bootstrap_listener && node->bootstrap.bootstrap_count < node->config.bootstrap_connections_max)
+	if (type == nano::bootstrap_server_type::undefined && !node->config.flags.disable_bootstrap_listener && node->bootstrap.bootstrap_count < node->config.bootstrap_connections_max)
 	{
 		++node->bootstrap.bootstrap_count;
 		type = nano::bootstrap_server_type::bootstrap;

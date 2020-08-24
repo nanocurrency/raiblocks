@@ -17,7 +17,7 @@ class system final
 {
 public:
 	system ();
-	system (uint16_t, nano::transport::transport_type = nano::transport::transport_type::tcp, nano::node_flags = nano::node_flags ());
+	system (uint16_t, nano::transport::transport_type = nano::transport::transport_type::tcp, nano::node_config = nano::node_config{});
 	~system ();
 	void generate_activity (nano::node &, std::vector<nano::account> &);
 	void generate_mass_activity (uint32_t, nano::node &);
@@ -44,16 +44,13 @@ public:
 	std::error_code poll_until_true (std::chrono::nanoseconds deadline, std::function<bool()>);
 	void stop ();
 	void deadline_set (const std::chrono::duration<double, std::nano> & delta);
-	std::shared_ptr<nano::node> add_node (nano::node_flags = nano::node_flags (), nano::transport::transport_type = nano::transport::transport_type::tcp);
-	std::shared_ptr<nano::node> add_node (nano::node_config const &, nano::node_flags = nano::node_flags (), nano::transport::transport_type = nano::transport::transport_type::tcp);
-	boost::asio::io_context io_ctx;
-	nano::alarm alarm{ io_ctx };
+	std::shared_ptr<nano::node> add_node (nano::node_config const & = nano::node_config{}, nano::transport::transport_type = nano::transport::transport_type::tcp);
 	std::vector<std::shared_ptr<nano::node>> nodes;
-	nano::logging logging;
-	nano::work_pool work{ std::max (std::thread::hardware_concurrency (), 1u) };
 	std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> deadline{ std::chrono::steady_clock::time_point::max () };
 	double deadline_scaling_factor{ 1.0 };
 	unsigned node_sequence{ 0 };
+	std::shared_ptr<nano::environment> env_impl;
+	nano::environment & env;
 };
 std::unique_ptr<nano::state_block> upgrade_epoch (nano::work_pool &, nano::ledger &, nano::epoch);
 void blocks_confirm (nano::node &, std::vector<std::shared_ptr<nano::block>> const &);

@@ -71,7 +71,7 @@ void nano::json_handler::process_request (bool unsafe_a)
 			// Try the rest of the options
 			if (action == "wallet_seed")
 			{
-				if (unsafe_a || node.network_params.network.is_dev_network ())
+				if (unsafe_a || node.env.constants.network.is_dev_network ())
 				{
 					wallet_seed ();
 				}
@@ -970,11 +970,11 @@ void nano::json_handler::active_difficulty ()
 
 void nano::json_handler::available_supply ()
 {
-	auto genesis_balance (node.balance (node.network_params.ledger.genesis_account)); // Cold storage genesis
+	auto genesis_balance (node.balance (node.env.constants.ledger.genesis_account)); // Cold storage genesis
 	auto landing_balance (node.balance (nano::account ("059F68AAB29DE0D3A27443625C7EA9CDDB6517A8B76FE37727EF6A4D76832AD5"))); // Active unavailable account
 	auto faucet_balance (node.balance (nano::account ("8E319CE6F3025E5B2DF66DA7AB1467FE48F1679C13DD43BFDB29FA2E9FC40D3B"))); // Faucet account
 	auto burned_balance ((node.balance_pending (nano::account (0))).second); // Burning 0 account
-	auto available (node.network_params.ledger.genesis_amount - genesis_balance - landing_balance - faucet_balance - burned_balance);
+	auto available (node.env.constants.ledger.genesis_amount - genesis_balance - landing_balance - faucet_balance - burned_balance);
 	response_l.put ("available", available.convert_to<std::string> ());
 	response_errors ();
 }
@@ -1614,7 +1614,7 @@ void nano::json_handler::bootstrap ()
 		uint16_t port;
 		if (!nano::parse_port (port_text, port))
 		{
-			if (!node.flags.disable_legacy_bootstrap)
+			if (!node.config.flags.disable_legacy_bootstrap)
 			{
 				std::string bootstrap_id (request.get<std::string> ("id", ""));
 				node.bootstrap_initiator.bootstrap (nano::endpoint (address, port), true, bypass_frontier_confirmation, bootstrap_id);
@@ -1640,7 +1640,7 @@ void nano::json_handler::bootstrap ()
 void nano::json_handler::bootstrap_any ()
 {
 	const bool force = request.get<bool> ("force", false);
-	if (!node.flags.disable_legacy_bootstrap)
+	if (!node.config.flags.disable_legacy_bootstrap)
 	{
 		std::string bootstrap_id (request.get<std::string> ("id", ""));
 		node.bootstrap_initiator.bootstrap (force, bootstrap_id);
@@ -1659,7 +1659,7 @@ void nano::json_handler::bootstrap_lazy ()
 	const bool force = request.get<bool> ("force", false);
 	if (!ec)
 	{
-		if (!node.flags.disable_lazy_bootstrap)
+		if (!node.config.flags.disable_lazy_bootstrap)
 		{
 			std::string bootstrap_id (request.get<std::string> ("id", ""));
 			node.bootstrap_initiator.bootstrap_lazy (hash, force, true, bootstrap_id);
@@ -2203,15 +2203,15 @@ public:
 			// Report opens as a receive
 			tree.put ("type", "receive");
 		}
-		if (block_a.hashables.source != network_params.ledger.genesis_account)
+		if (block_a.hashables.source != constants.ledger.genesis_account)
 		{
 			tree.put ("account", handler.node.ledger.account (transaction, block_a.hashables.source).to_account ());
 			tree.put ("amount", handler.node.ledger.amount (transaction, hash).convert_to<std::string> ());
 		}
 		else
 		{
-			tree.put ("account", network_params.ledger.genesis_account.to_account ());
-			tree.put ("amount", network_params.ledger.genesis_amount.convert_to<std::string> ());
+			tree.put ("account", constants.ledger.genesis_account.to_account ());
+			tree.put ("amount", constants.ledger.genesis_amount.convert_to<std::string> ());
 		}
 	}
 	void change_block (nano::change_block const & block_a)
@@ -2308,7 +2308,7 @@ public:
 	nano::transaction & transaction;
 	boost::property_tree::ptree & tree;
 	nano::block_hash const & hash;
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	std::vector<nano::public_key> const & accounts_filter;
 };
 }
@@ -3202,7 +3202,7 @@ void nano::json_handler::receive ()
 						bool generate_work (work == 0); // Disable work generation if "work" option is provided
 						auto response_a (response);
 						wallet->receive_async (
-						std::move (block), representative, node.network_params.ledger.genesis_amount, [response_a](std::shared_ptr<nano::block> block_a) {
+						std::move (block), representative, node.env.constants.ledger.genesis_amount, [response_a](std::shared_ptr<nano::block> block_a) {
 							if (block_a != nullptr)
 							{
 								boost::property_tree::ptree response_l;
@@ -3751,7 +3751,7 @@ void nano::json_handler::telemetry ()
 					if (address.is_loopback () && port == rpc_l->node.network.endpoint ().port ())
 					{
 						// Requesting telemetry metrics locally
-						auto telemetry_data = nano::local_telemetry_data (rpc_l->node.store, rpc_l->node.ledger.cache, rpc_l->node.network, rpc_l->node.config.bandwidth_limit, rpc_l->node.network_params, rpc_l->node.startup_time, rpc_l->node.active.active_difficulty (), rpc_l->node.node_id);
+						auto telemetry_data = nano::local_telemetry_data (rpc_l->node.store, rpc_l->node.ledger.cache, rpc_l->node.network, rpc_l->node.config.bandwidth_limit, rpc_l->node.env.constants, rpc_l->node.startup_time, rpc_l->node.active.active_difficulty (), rpc_l->node.node_id);
 
 						nano::jsonconfig config_l;
 						auto const should_ignore_identification_metrics = false;
@@ -4081,11 +4081,11 @@ void nano::json_handler::version ()
 {
 	response_l.put ("rpc_version", "1");
 	response_l.put ("store_version", std::to_string (node.store_version ()));
-	response_l.put ("protocol_version", std::to_string (node.network_params.protocol.protocol_version));
+	response_l.put ("protocol_version", std::to_string (node.env.constants.protocol.protocol_version));
 	response_l.put ("node_vendor", boost::str (boost::format ("Nano %1%") % NANO_VERSION_STRING));
 	response_l.put ("store_vendor", node.store.vendor_get ());
-	response_l.put ("network", node.network_params.network.get_current_network_as_string ());
-	response_l.put ("network_identifier", node.network_params.ledger.genesis_hash.to_string ());
+	response_l.put ("network", node.env.constants.network.get_current_network_as_string ());
+	response_l.put ("network_identifier", node.env.constants.ledger.genesis_hash.to_string ());
 	response_l.put ("build_info", BUILD_INFO);
 	response_errors ();
 }

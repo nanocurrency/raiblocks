@@ -7,11 +7,6 @@
 #include <sstream>
 #include <vector>
 
-nano::daemon_config::daemon_config (boost::filesystem::path const & data_path_a) :
-data_path (data_path_a)
-{
-}
-
 nano::error nano::daemon_config::serialize_toml (nano::tomlconfig & toml)
 {
 	nano::tomlconfig rpc_l;
@@ -101,7 +96,7 @@ nano::error nano::daemon_config::deserialize_json (bool & upgraded_a, nano::json
 
 			auto rpc_l (json.get_required_child ("rpc"));
 
-			if (!rpc.deserialize_json (upgraded_a, rpc_l, data_path))
+			if (!rpc.deserialize_json (upgraded_a, rpc_l, node.path))
 			{
 				auto node_l (json.get_required_child ("node"));
 				if (!json.get_error ())

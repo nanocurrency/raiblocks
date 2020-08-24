@@ -21,11 +21,15 @@ void add_required_children_node_config_tree (nano::jsonconfig & tree);
 
 TEST (node, stop)
 {
-	nano::system system (1);
-	ASSERT_NE (system.nodes[0]->wallets.items.end (), system.nodes[0]->wallets.items.begin ());
-	system.nodes[0]->stop ();
-	system.io_ctx.run ();
-	ASSERT_TRUE (true);
+	std::weak_ptr<nano::node> node_w;
+	{
+		nano::system system (1);
+		node_w = system.nodes[0]->shared ();
+		ASSERT_NE (system.nodes[0]->wallets.items.end (), system.nodes[0]->wallets.items.begin ());
+		system.nodes[0]->stop ();
+		system.env.ctx.run ();
+	}
+	ASSERT_EQ (nullptr, node_w.lock ());
 }
 
 TEST (node, work_generate)
@@ -35,33 +39,28 @@ TEST (node, work_generate)
 	nano::block_hash root{ 1 };
 	nano::work_version version{ nano::work_version::work_1 };
 	{
-		auto difficulty = nano::difficulty::from_multiplier (1.5, node.network_params.network.publish_thresholds.base);
+		auto difficulty = nano::difficulty::from_multiplier (1.5, node.env.constants.network.publish_thresholds.base);
 		auto work = node.work_generate_blocking (version, root, difficulty);
 		ASSERT_TRUE (work.is_initialized ());
 		ASSERT_TRUE (nano::work_difficulty (version, root, *work) >= difficulty);
 	}
 	{
-		auto difficulty = nano::difficulty::from_multiplier (0.5, node.network_params.network.publish_thresholds.base);
+		auto difficulty = nano::difficulty::from_multiplier (0.5, node.env.constants.network.publish_thresholds.base);
 		boost::optional<uint64_t> work;
 		do
 		{
 			work = node.work_generate_blocking (version, root, difficulty);
-		} while (nano::work_difficulty (version, root, *work) >= node.network_params.network.publish_thresholds.base);
+		} while (nano::work_difficulty (version, root, *work) >= node.env.constants.network.publish_thresholds.base);
 		ASSERT_TRUE (work.is_initialized ());
 		ASSERT_TRUE (nano::work_difficulty (version, root, *work) >= difficulty);
-		ASSERT_FALSE (nano::work_difficulty (version, root, *work) >= node.network_params.network.publish_thresholds.base);
+		ASSERT_FALSE (nano::work_difficulty (version, root, *work) >= node.env.constants.network.publish_thresholds.base);
 	}
 }
 
 TEST (node, block_store_path_failure)
 {
-	auto service (boost::make_shared<boost::asio::io_context> ());
-	nano::alarm alarm (*service);
-	auto path (nano::unique_path ());
-	nano::logging logging;
-	logging.init (path);
-	nano::work_pool work (std::numeric_limits<unsigned>::max ());
-	auto node (std::make_shared<nano::node> (*service, nano::get_available_port (), path, alarm, logging, work));
+	nano::environment env;
+	auto node (std::make_shared<nano::node> (env, nano::node_config{}));
 	ASSERT_TRUE (node->wallets.items.empty ());
 	node->stop ();
 }
@@ -76,20 +75,18 @@ TEST (node_DeathTest, readonly_block_store_not_exist)
 	testing::FLAGS_gtest_death_test_style = "threadsafe";
 
 	// This is a read-only node with no ledger file
-	ASSERT_EXIT (nano::inactive_node (nano::unique_path (), nano::inactive_node_flag_defaults ()), ::testing::ExitedWithCode (1), "");
+	nano::environment env{ nano::unique_path () };
+	nano::node_flags flags;
+	auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive) };
+	ASSERT_EXIT ((nano::inactive_node{ env, flags }), ::testing::ExitedWithCode (1), "");
 }
 
 TEST (node, password_fanout)
 {
-	auto service (boost::make_shared<boost::asio::io_context> ());
-	nano::alarm alarm (*service);
-	auto path (nano::unique_path ());
+	nano::environment env;
 	nano::node_config config;
-	config.peering_port = nano::get_available_port ();
-	config.logging.init (path);
-	nano::work_pool work (std::numeric_limits<unsigned>::max ());
 	config.password_fanout = 10;
-	auto node (std::make_shared<nano::node> (*service, path, alarm, config, work));
+	auto node (std::make_shared<nano::node> (env, config));
 	auto wallet (node->wallets.create (100));
 	ASSERT_EQ (10, wallet->store.password.values.size ());
 	node->stop ();
@@ -189,21 +186,21 @@ TEST (node, send_out_of_order)
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto send2 = builder.make_block ()
 	             .previous (send1->hash ())
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - 2 * node1.config.receive_minimum.number ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (send1->hash ()))
+	             .work (*system.env.work.generate (send1->hash ()))
 	             .build_shared ();
 	auto send3 = builder.make_block ()
 	             .previous (send2->hash ())
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - 3 * node1.config.receive_minimum.number ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (send2->hash ()))
+	             .work (*system.env.work.generate (send2->hash ()))
 	             .build_shared ();
 	node1.process_active (send3);
 	node1.process_active (send2);
@@ -225,7 +222,7 @@ TEST (node, quick_confirm)
 	            .destination (key.pub)
 	            .balance (node1.config.online_weight_minimum.number () + 1)
 	            .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	            .work (*system.work.generate (previous))
+	            .work (*system.env.work.generate (previous))
 	            .build_shared ();
 	node1.process_active (send);
 	ASSERT_TIMELY (10s, !node1.balance (key.pub).is_zero ());
@@ -236,9 +233,9 @@ TEST (node, quick_confirm)
 TEST (node, node_receive_quorum)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
-	auto & node1 = *system.add_node (node_flags);
+	nano::node_config config;
+	config.flags.disable_udp = false;
+	auto & node1 = *system.add_node (config);
 	nano::keypair key;
 	nano::block_hash previous (node1.latest (nano::dev_genesis_key.pub));
 	system.wallet (0)->insert_adhoc (key.prv);
@@ -247,7 +244,7 @@ TEST (node, node_receive_quorum)
 	            .destination (key.pub)
 	            .balance (nano::genesis_amount - nano::Gxrb_ratio)
 	            .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	            .work (*system.work.generate (previous))
+	            .work (*system.env.work.generate (previous))
 	            .build_shared ();
 	node1.process_active (send);
 	ASSERT_TIMELY (10s, node1.ledger.block_exists (send->hash ()));
@@ -259,11 +256,11 @@ TEST (node, node_receive_quorum)
 		ASSERT_EQ (1, info->election->last_votes.size ());
 	}
 	nano::system system2;
-	system2.add_node (node_flags);
+	system2.add_node (config);
 
 	system2.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	ASSERT_TRUE (node1.balance (key.pub).is_zero ());
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, system2.nodes[0]->network.endpoint (), node1.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, system2.nodes[0]->network.endpoint (), node1.env.constants.protocol.protocol_version));
 	node1.network.send_keepalive (channel);
 	while (node1.balance (key.pub).is_zero ())
 	{
@@ -275,22 +272,23 @@ TEST (node, node_receive_quorum)
 TEST (node, auto_bootstrap)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_udp = false;
-	auto node0 = system.add_node (config, node_flags);
+	config.flags.disable_bootstrap_bulk_push_client = true;
+	config.flags.disable_lazy_bootstrap = true;
+	config.flags.disable_udp = false;
+	auto node0 = system.add_node (config);
 	nano::keypair key2;
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	system.wallet (0)->insert_adhoc (key2.prv);
 	auto send1 (system.wallet (0)->send_action (nano::dev_genesis_key.pub, key2.pub, node0->config.receive_minimum.number ()));
 	ASSERT_NE (nullptr, send1);
 	ASSERT_TIMELY (10s, node0->balance (key2.pub) == node0->config.receive_minimum.number ());
-	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.alarm, system.logging, system.work, node_flags));
+	nano::node_config config2;
+	config2.flags = config.flags;
+	auto node1 (std::make_shared<nano::node> (system.env, config2));
 	ASSERT_FALSE (node1->init_error ());
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->env.constants.protocol.protocol_version));
 	node1->network.send_keepalive (channel);
 	node1->start ();
 	system.nodes.push_back (node1);
@@ -309,20 +307,19 @@ TEST (node, auto_bootstrap)
 TEST (node, auto_bootstrap_reverse)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_udp = false;
-	auto node0 = system.add_node (config, node_flags);
+	config.flags.disable_bootstrap_bulk_push_client = true;
+	config.flags.disable_lazy_bootstrap = true;
+	config.flags.disable_udp = false;
+	auto node0 = system.add_node (config);
 	nano::keypair key2;
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	system.wallet (0)->insert_adhoc (key2.prv);
-	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.alarm, system.logging, system.work, node_flags));
+	auto node1 (std::make_shared<nano::node> (system.env, config));
 	ASSERT_FALSE (node1->init_error ());
 	ASSERT_NE (nullptr, system.wallet (0)->send_action (nano::dev_genesis_key.pub, key2.pub, node0->config.receive_minimum.number ()));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node0->network.udp_channels, node1->network.endpoint (), node0->network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node0->network.udp_channels, node1->network.endpoint (), node0->env.constants.protocol.protocol_version));
 	node0->network.send_keepalive (channel);
 	node1->start ();
 	system.nodes.push_back (node1);
@@ -404,7 +401,7 @@ TEST (node, search_pending_multiple)
 TEST (node, search_pending_confirmed)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node = system.add_node (node_config);
 	nano::keypair key2;
@@ -467,18 +464,18 @@ TEST (node, unlock_search)
 TEST (node, connect_after_junk)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
-	auto node0 = system.add_node (node_flags);
-	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.alarm, system.logging, system.work, node_flags));
+	nano::node_config config;
+	config.flags.disable_udp = false;
+	auto node0 = system.add_node (config);
+	auto node1 (std::make_shared<nano::node> (system.env, config));
 	std::vector<uint8_t> junk_buffer;
 	junk_buffer.push_back (0);
-	auto channel1 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.protocol.protocol_version));
+	auto channel1 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->env.constants.protocol.protocol_version));
 	channel1->send_buffer (nano::shared_const_buffer (std::move (junk_buffer)), nano::stat::detail::bulk_pull, [](boost::system::error_code const &, size_t) {});
 	ASSERT_TIMELY (10s, node0->stats.count (nano::stat::type::error) != 0);
 	node1->start ();
 	system.nodes.push_back (node1);
-	auto channel2 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->network_params.protocol.protocol_version));
+	auto channel2 (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node0->network.endpoint (), node1->env.constants.protocol.protocol_version));
 	node1->network.send_keepalive (channel2);
 	ASSERT_TIMELY (10s, !node1->network.empty ());
 	node1->stop ();
@@ -524,7 +521,8 @@ TEST (node_config, serialization)
 	auto path (nano::unique_path ());
 	nano::logging logging1;
 	logging1.init (path);
-	nano::node_config config1 (100, logging1);
+	nano::node_config config1;
+	config1.peering_port = 100;
 	config1.bootstrap_fraction_numerator = 10;
 	config1.receive_minimum = 10;
 	config1.online_weight_minimum = 10;
@@ -537,10 +535,10 @@ TEST (node_config, serialization)
 	config1.deprecated_lmdb_max_dbs = 256;
 	nano::jsonconfig tree;
 	config1.serialize_json (tree);
-	nano::logging logging2;
-	logging2.init (path);
-	logging2.node_lifetime_tracing_value = !logging2.node_lifetime_tracing_value;
-	nano::node_config config2 (50, logging2);
+	nano::node_config config2;
+	config2.peering_port = 50;
+	config2.logging.init (path);
+	config2.logging.node_lifetime_tracing_value = !config2.logging.node_lifetime_tracing_value;
 	ASSERT_NE (config2.bootstrap_fraction_numerator, config1.bootstrap_fraction_numerator);
 	ASSERT_NE (config2.peering_port, config1.peering_port);
 	ASSERT_NE (config2.logging.node_lifetime_tracing_value, config1.logging.node_lifetime_tracing_value);
@@ -765,20 +763,14 @@ TEST (node_config, required_child)
 
 TEST (node_config, random_rep)
 {
-	auto path (nano::unique_path ());
-	nano::logging logging1;
-	logging1.init (path);
-	nano::node_config config1 (100, logging1);
+	nano::node_config config1;
 	auto rep (config1.random_representative ());
 	ASSERT_NE (config1.preconfigured_representatives.end (), std::find (config1.preconfigured_representatives.begin (), config1.preconfigured_representatives.end (), rep));
 }
 
 TEST (node_config, unsupported_version_upgrade)
 {
-	auto path (nano::unique_path ());
-	nano::logging logging1;
-	logging1.init (path);
-	nano::node_config node_config (100, logging1);
+	nano::node_config node_config;
 	nano::jsonconfig config;
 	node_config.serialize_json (config);
 	config.put ("version", "16"); // Version 16 and earlier is no longer supported for direct upgrade
@@ -918,11 +910,11 @@ TEST (json, backup)
 TEST (node_flags, disable_tcp_realtime)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
-	auto node1 = system.add_node (node_flags);
-	node_flags.disable_tcp_realtime = true;
-	auto node2 = system.add_node (node_flags);
+	nano::node_config config;
+	config.flags.disable_udp = false;
+	auto node1 = system.add_node (config);
+	config.flags.disable_tcp_realtime = true;
+	auto node2 = system.add_node (config);
 	ASSERT_EQ (1, node1->network.size ());
 	auto list1 (node1->network.list (2));
 	ASSERT_EQ (node2->network.endpoint (), list1[0]->get_endpoint ());
@@ -936,12 +928,12 @@ TEST (node_flags, disable_tcp_realtime)
 TEST (node_flags, disable_tcp_realtime_and_bootstrap_listener)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
-	auto node1 = system.add_node (node_flags);
-	node_flags.disable_tcp_realtime = true;
-	node_flags.disable_bootstrap_listener = true;
-	auto node2 = system.add_node (node_flags);
+	nano::node_config config;
+	config.flags.disable_udp = false;
+	auto node1 = system.add_node (config);
+	config.flags.disable_tcp_realtime = true;
+	config.flags.disable_bootstrap_listener = true;
+	auto node2 = system.add_node (config);
 	ASSERT_EQ (nano::tcp_endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->bootstrap.endpoint ());
 	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.endpoint ());
 	ASSERT_EQ (1, node1->network.size ());
@@ -958,16 +950,16 @@ TEST (node_flags, disable_tcp_realtime_and_bootstrap_listener)
 TEST (node_flags, disable_udp)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
-	auto node1 = system.add_node (node_flags);
-	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), system.alarm, nano::node_config (nano::get_available_port (), system.logging), system.work));
+	nano::node_config config;
+	config.flags.disable_udp = false;
+	auto node1 = system.add_node (config);
+	auto node2 (std::make_shared<nano::node> (system.env, nano::node_config{}));
 	system.nodes.push_back (node2);
 	node2->start ();
 	ASSERT_EQ (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.udp_channels.get_local_endpoint ());
 	ASSERT_NE (nano::endpoint (boost::asio::ip::address_v6::loopback (), 0), node2->network.endpoint ());
 	// Send UDP message
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node2->network.endpoint (), node2->network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1->network.udp_channels, node2->network.endpoint (), node2->env.constants.protocol.protocol_version));
 	node1->network.send_keepalive (channel);
 	std::this_thread::sleep_for (std::chrono::milliseconds (500));
 	// Check empty network
@@ -1057,7 +1049,7 @@ TEST (node, fork_publish_inactive)
 	             .destination (key1.pub)
 	             .balance (nano::genesis_amount - 100)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto send2 = builder.make_block ()
 	             .previous (genesis.hash ())
@@ -1097,14 +1089,14 @@ TEST (node, fork_keep)
 	             .destination (key1.pub)
 	             .balance (nano::genesis_amount - 100)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto send2 = builder.make_block ()
 	             .previous (genesis.hash ())
 	             .destination (key2.pub)
 	             .balance (nano::genesis_amount - 100)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	node1.process_active (send1);
 	node1.block_processor.flush ();
@@ -1157,7 +1149,7 @@ TEST (node, fork_flip)
 	             .destination (key1.pub)
 	             .balance (nano::genesis_amount - 100)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	nano::publish publish1 (send1);
 	nano::keypair key2;
@@ -1166,7 +1158,7 @@ TEST (node, fork_flip)
 	             .destination (key2.pub)
 	             .balance (nano::genesis_amount - 100)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	nano::publish publish2 (send2);
 	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
@@ -1221,18 +1213,16 @@ TEST (node, fork_multi_flip)
 	for (auto & type : types)
 	{
 		nano::system system;
-		nano::node_flags node_flags;
+		nano::node_config node_config;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			node_config.flags.disable_tcp_realtime = true;
+			node_config.flags.disable_bootstrap_listener = true;
+			node_config.flags.disable_udp = false;
 		}
-		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-		auto & node1 (*system.add_node (node_config, node_flags, type));
-		node_config.peering_port = nano::get_available_port ();
-		auto & node2 (*system.add_node (node_config, node_flags, type));
+		auto & node1 (*system.add_node (node_config, type));
+		auto & node2 (*system.add_node (node_config, type));
 		ASSERT_EQ (1, node1.network.size ());
 		nano::keypair key1;
 		nano::genesis genesis;
@@ -1242,7 +1232,7 @@ TEST (node, fork_multi_flip)
 		             .destination (key1.pub)
 		             .balance (nano::genesis_amount - 100)
 		             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		             .work (*system.work.generate (genesis.hash ()))
+		             .work (*system.env.work.generate (genesis.hash ()))
 		             .build_shared ();
 		nano::publish publish1 (send1);
 		nano::keypair key2;
@@ -1251,7 +1241,7 @@ TEST (node, fork_multi_flip)
 		             .destination (key2.pub)
 		             .balance (nano::genesis_amount - 100)
 		             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		             .work (*system.work.generate (genesis.hash ()))
+		             .work (*system.env.work.generate (genesis.hash ()))
 		             .build_shared ();
 		nano::publish publish2 (send2);
 		auto send3 = builder.make_block ()
@@ -1259,7 +1249,7 @@ TEST (node, fork_multi_flip)
 		             .destination (key2.pub)
 		             .balance (nano::genesis_amount - 100)
 		             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		             .work (*system.work.generate (publish2.block->hash ()))
+		             .work (*system.env.work.generate (publish2.block->hash ()))
 		             .build_shared ();
 		nano::publish publish3 (send3);
 		node1.network.process_message (publish1, node1.network.udp_channels.create (node1.network.endpoint ()));
@@ -1317,16 +1307,16 @@ TEST (node, fork_bootstrap_flip)
 {
 	nano::system system0;
 	nano::system system1;
-	nano::node_config config0 (nano::get_available_port (), system0.logging);
+	nano::node_config config0;
 	config0.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_udp = false;
-	auto & node1 (*system0.add_node (config0, node_flags));
-	nano::node_config config1 (nano::get_available_port (), system1.logging);
+	config0.flags.disable_bootstrap_bulk_push_client = true;
+	config0.flags.disable_lazy_bootstrap = true;
+	config0.flags.disable_udp = false;
+	auto & node1 (*system0.add_node (config0));
+	nano::node_config config1;
+	config1.flags = config0.flags;
 	config1.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node2 (*system1.add_node (config1, node_flags));
+	auto & node2 (*system1.add_node (config1));
 	system0.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	nano::block_hash latest (node1.latest (nano::dev_genesis_key.pub));
 	nano::keypair key1;
@@ -1336,7 +1326,7 @@ TEST (node, fork_bootstrap_flip)
 	             .destination (key1.pub)
 	             .balance (nano::genesis_amount - nano::Gxrb_ratio)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system0.work.generate (latest))
+	             .work (*system0.env.work.generate (latest))
 	             .build_shared ();
 	nano::keypair key2;
 	auto send2 = builder.make_block ()
@@ -1344,7 +1334,7 @@ TEST (node, fork_bootstrap_flip)
 	             .destination (key2.pub)
 	             .balance (nano::genesis_amount - nano::Gxrb_ratio)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system0.work.generate (latest))
+	             .work (*system0.env.work.generate (latest))
 	             .build_shared ();
 	// Insert but don't rebroadcast, simulating settled blocks
 	node1.block_processor.add (send1, nano::seconds_since_epoch ());
@@ -1355,7 +1345,7 @@ TEST (node, fork_bootstrap_flip)
 		auto transaction (node2.store.tx_begin_read ());
 		ASSERT_TRUE (node2.store.block_exists (transaction, send2->hash ()));
 	}
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node2.network.endpoint (), node2.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node2.network.endpoint (), node2.env.constants.protocol.protocol_version));
 	node1.network.send_keepalive (channel);
 	system1.deadline_set (50s);
 	while (node2.network.empty ())
@@ -1386,7 +1376,7 @@ TEST (node, fork_open)
 	             .destination (key1.pub)
 	             .balance (0)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	nano::publish publish1 (send1);
 	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
@@ -1404,7 +1394,7 @@ TEST (node, fork_open)
 	             .representative (1)
 	             .account (key1.pub)
 	             .sign (key1.prv, key1.pub)
-	             .work (*system.work.generate (key1.pub))
+	             .work (*system.env.work.generate (key1.pub))
 	             .build_shared ();
 	nano::publish publish2 (open1);
 	node1.network.process_message (publish2, channel1);
@@ -1415,7 +1405,7 @@ TEST (node, fork_open)
 	             .representative (2)
 	             .account (key1.pub)
 	             .sign (key1.prv, key1.pub)
-	             .work (*system.work.generate (key1.pub))
+	             .work (*system.env.work.generate (key1.pub))
 	             .build_shared ();
 	nano::publish publish3 (open2);
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
@@ -1447,7 +1437,7 @@ TEST (node, fork_open_flip)
 	             .destination (key1.pub)
 	             .balance (nano::genesis_amount - 1)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	// A copy is necessary to avoid data races during ledger processing, which sets the sideband
 	auto send1_copy (std::make_shared<nano::send_block> (*send1));
@@ -1460,7 +1450,7 @@ TEST (node, fork_open_flip)
 	             .representative (rep1.pub)
 	             .account (key1.pub)
 	             .sign (key1.prv, key1.pub)
-	             .work (*system.work.generate (key1.pub))
+	             .work (*system.env.work.generate (key1.pub))
 	             .build_shared ();
 	// This block should be evicted
 	auto open2 = builder.make_block ()
@@ -1468,7 +1458,7 @@ TEST (node, fork_open_flip)
 	             .representative (rep2.pub)
 	             .account (key1.pub)
 	             .sign (key1.prv, key1.pub)
-	             .work (*system.work.generate (key1.pub))
+	             .work (*system.env.work.generate (key1.pub))
 	             .build_shared ();
 	ASSERT_FALSE (*open1 == *open2);
 	// node1 gets copy that will remain
@@ -1543,7 +1533,7 @@ TEST (node, fork_no_vote_quorum)
 	ASSERT_EQ (node1.config.receive_minimum.number (), node1.weight (key1));
 	ASSERT_EQ (node1.config.receive_minimum.number (), node2.weight (key1));
 	ASSERT_EQ (node1.config.receive_minimum.number (), node3.weight (key1));
-	nano::state_block send1 (nano::dev_genesis_key.pub, block->hash (), nano::dev_genesis_key.pub, (nano::genesis_amount / 4) - (node1.config.receive_minimum.number () * 2), key1, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (block->hash ()));
+	nano::state_block send1 (nano::dev_genesis_key.pub, block->hash (), nano::dev_genesis_key.pub, (nano::genesis_amount / 4) - (node1.config.receive_minimum.number () * 2), key1, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (block->hash ()));
 	ASSERT_EQ (nano::process_result::progress, node1.process (send1).code);
 	ASSERT_EQ (nano::process_result::progress, node2.process (send1).code);
 	ASSERT_EQ (nano::process_result::progress, node3.process (send1).code);
@@ -1553,7 +1543,7 @@ TEST (node, fork_no_vote_quorum)
 	             .destination (key2)
 	             .balance ((nano::genesis_amount / 4) - (node1.config.receive_minimum.number () * 2))
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (block->hash ()))
+	             .work (*system.env.work.generate (block->hash ()))
 	             .build_shared ();
 	nano::raw_key key3;
 	auto transaction (system.wallet (1)->wallets.tx_begin_read ());
@@ -1565,7 +1555,7 @@ TEST (node, fork_no_vote_quorum)
 		nano::vectorstream stream (buffer);
 		confirm.serialize (stream, false);
 	}
-	nano::transport::channel_udp channel (node2.network.udp_channels, node3.network.endpoint (), node1.network_params.protocol.protocol_version);
+	nano::transport::channel_udp channel (node2.network.udp_channels, node3.network.endpoint (), node1.env.constants.protocol.protocol_version);
 	channel.send_buffer (nano::shared_const_buffer (std::move (buffer)), nano::stat::detail::confirm_ack);
 	ASSERT_TIMELY (10s, node3.stats.count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::in) >= 3);
 	ASSERT_TRUE (node1.latest (nano::dev_genesis_key.pub) == send1.hash ());
@@ -1646,7 +1636,7 @@ TEST (node, DISABLED_fork_stale)
 	auto & node1 (*system1.nodes[0]);
 	auto & node2 (*system2.nodes[0]);
 	node2.bootstrap_initiator.bootstrap (node1.network.endpoint ());
-	std::shared_ptr<nano::transport::channel> channel (std::make_shared<nano::transport::channel_udp> (node2.network.udp_channels, node1.network.endpoint (), node2.network_params.protocol.protocol_version));
+	std::shared_ptr<nano::transport::channel> channel (std::make_shared<nano::transport::channel_udp> (node2.network.udp_channels, node1.network.endpoint (), node2.env.constants.protocol.protocol_version));
 	auto vote = std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 0, std::vector<nano::block_hash> ());
 	node2.rep_crawler.response (channel, vote);
 	nano::genesis genesis;
@@ -1713,21 +1703,18 @@ TEST (node, broadcast_elected)
 	std::vector<nano::transport::transport_type> types{ nano::transport::transport_type::tcp, nano::transport::transport_type::udp };
 	for (auto & type : types)
 	{
-		nano::node_flags node_flags;
+		nano::system system;
+		nano::node_config node_config;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			node_config.flags.disable_tcp_realtime = true;
+			node_config.flags.disable_bootstrap_listener = true;
+			node_config.flags.disable_udp = false;
 		}
-		nano::system system;
-		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-		auto node0 = system.add_node (node_config, node_flags, type);
-		node_config.peering_port = nano::get_available_port ();
-		auto node1 = system.add_node (node_config, node_flags, type);
-		node_config.peering_port = nano::get_available_port ();
-		auto node2 = system.add_node (node_config, node_flags, type);
+		auto node0 = system.add_node (node_config, type);
+		auto node1 = system.add_node (node_config, type);
+		auto node2 = system.add_node (node_config, type);
 		nano::keypair rep_big;
 		nano::keypair rep_small;
 		nano::keypair rep_other;
@@ -1741,42 +1728,42 @@ TEST (node, broadcast_elected)
 			                 .destination (rep_big.pub)
 			                 .balance (nano::Gxrb_ratio * 5)
 			                 .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-			                 .work (*system.work.generate (nano::genesis_hash))
+			                 .work (*system.env.work.generate (nano::genesis_hash))
 			                 .build ();
 			auto open_big = *builder.open ()
 			                 .source (fund_big.hash ())
 			                 .representative (rep_big.pub)
 			                 .account (rep_big.pub)
 			                 .sign (rep_big.prv, rep_big.pub)
-			                 .work (*system.work.generate (rep_big.pub))
+			                 .work (*system.env.work.generate (rep_big.pub))
 			                 .build ();
 			auto fund_small = *builder.send ()
 			                   .previous (fund_big.hash ())
 			                   .destination (rep_small.pub)
 			                   .balance (nano::Gxrb_ratio * 2)
 			                   .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-			                   .work (*system.work.generate (fund_big.hash ()))
+			                   .work (*system.env.work.generate (fund_big.hash ()))
 			                   .build ();
 			auto open_small = *builder.open ()
 			                   .source (fund_small.hash ())
 			                   .representative (rep_small.pub)
 			                   .account (rep_small.pub)
 			                   .sign (rep_small.prv, rep_small.pub)
-			                   .work (*system.work.generate (rep_small.pub))
+			                   .work (*system.env.work.generate (rep_small.pub))
 			                   .build ();
 			auto fund_other = *builder.send ()
 			                   .previous (fund_small.hash ())
 			                   .destination (rep_other.pub)
 			                   .balance (nano::Gxrb_ratio)
 			                   .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-			                   .work (*system.work.generate (fund_small.hash ()))
+			                   .work (*system.env.work.generate (fund_small.hash ()))
 			                   .build ();
 			auto open_other = *builder.open ()
 			                   .source (fund_other.hash ())
 			                   .representative (rep_other.pub)
 			                   .account (rep_other.pub)
 			                   .sign (rep_other.prv, rep_other.pub)
-			                   .work (*system.work.generate (rep_other.pub))
+			                   .work (*system.env.work.generate (rep_other.pub))
 			                   .build ();
 			ASSERT_EQ (nano::process_result::progress, node0->ledger.process (transaction0, fund_big).code);
 			ASSERT_EQ (nano::process_result::progress, node1->ledger.process (transaction1, fund_big).code);
@@ -1851,7 +1838,7 @@ TEST (node, broadcast_elected)
 TEST (node, rep_self_vote)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.online_weight_minimum = std::numeric_limits<nano::uint128_t>::max ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node0 = system.add_node (node_config);
@@ -1862,14 +1849,14 @@ TEST (node, rep_self_vote)
 	                 .destination (rep_big.pub)
 	                 .balance (nano::uint128_t{ "0xb0000000000000000000000000000000" })
 	                 .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                 .work (*system.work.generate (nano::genesis_hash))
+	                 .work (*system.env.work.generate (nano::genesis_hash))
 	                 .build ();
 	auto open_big = *builder.open ()
 	                 .source (fund_big.hash ())
 	                 .representative (rep_big.pub)
 	                 .account (rep_big.pub)
 	                 .sign (rep_big.prv, rep_big.pub)
-	                 .work (*system.work.generate (rep_big.pub))
+	                 .work (*system.env.work.generate (rep_big.pub))
 	                 .build ();
 	ASSERT_EQ (nano::process_result::progress, node0->process (fund_big).code);
 	ASSERT_EQ (nano::process_result::progress, node0->process (open_big).code);
@@ -1890,7 +1877,7 @@ TEST (node, rep_self_vote)
 	              .destination (rep_big.pub)
 	              .balance (nano::uint128_t ("0x60000000000000000000000000000000"))
 	              .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	              .work (*system.work.generate (fund_big.hash ()))
+	              .work (*system.env.work.generate (fund_big.hash ()))
 	              .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node0->process (*block0).code);
 	auto & active (node0->active);
@@ -1937,10 +1924,10 @@ TEST (node, bootstrap_bulk_push)
 {
 	nano::system system0;
 	nano::system system1;
-	nano::node_config config0 (nano::get_available_port (), system0.logging);
+	nano::node_config config0;
 	config0.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node0 (system0.add_node (config0));
-	nano::node_config config1 (nano::get_available_port (), system1.logging);
+	nano::node_config config1;
 	config1.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node1 (system1.add_node (config1));
 	nano::keypair key0;
@@ -1971,10 +1958,9 @@ TEST (node, bootstrap_bulk_push)
 TEST (node, bootstrap_fork_open)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node0 = system.add_node (node_config);
-	node_config.peering_port = nano::get_available_port ();
 	auto node1 = system.add_node (node_config);
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	nano::keypair key0;
@@ -1984,21 +1970,21 @@ TEST (node, bootstrap_fork_open)
 	              .destination (key0.pub)
 	              .balance (nano::genesis_amount - 500)
 	              .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	              .work (*system.work.generate (nano::genesis_hash))
+	              .work (*system.env.work.generate (nano::genesis_hash))
 	              .build ();
 	auto open0 = *builder.open ()
 	              .source (send0.hash ())
 	              .representative (1)
 	              .account (key0.pub)
 	              .sign (key0.prv, key0.pub)
-	              .work (*system.work.generate (key0.pub))
+	              .work (*system.env.work.generate (key0.pub))
 	              .build ();
 	auto open1 = *builder.open ()
 	              .source (send0.hash ())
 	              .representative (2)
 	              .account (key0.pub)
 	              .sign (key0.prv, key0.pub)
-	              .work (*system.work.generate (key0.pub))
+	              .work (*system.env.work.generate (key0.pub))
 	              .build ();
 	// Both know about send0
 	ASSERT_EQ (nano::process_result::progress, node0->process (send0).code);
@@ -2150,7 +2136,7 @@ TEST (node, rep_weight)
 	                                      .balance (nano::genesis_amount - amount_not_pr)
 	                                      .link (keypair1.pub)
 	                                      .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                                      .work (*system.work.generate (genesis.hash ()))
+	                                      .work (*system.env.work.generate (genesis.hash ()))
 	                                      .build ();
 	std::shared_ptr<nano::block> block2 = builder
 	                                      .state ()
@@ -2160,7 +2146,7 @@ TEST (node, rep_weight)
 	                                      .balance (amount_not_pr)
 	                                      .link (block1->hash ())
 	                                      .sign (keypair1.prv, keypair1.pub)
-	                                      .work (*system.work.generate (keypair1.pub))
+	                                      .work (*system.env.work.generate (keypair1.pub))
 	                                      .build ();
 	std::shared_ptr<nano::block> block3 = builder
 	                                      .state ()
@@ -2170,7 +2156,7 @@ TEST (node, rep_weight)
 	                                      .balance (nano::genesis_amount - amount_not_pr - amount_pr)
 	                                      .link (keypair2.pub)
 	                                      .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                                      .work (*system.work.generate (block1->hash ()))
+	                                      .work (*system.env.work.generate (block1->hash ()))
 	                                      .build ();
 	std::shared_ptr<nano::block> block4 = builder
 	                                      .state ()
@@ -2180,7 +2166,7 @@ TEST (node, rep_weight)
 	                                      .balance (amount_pr)
 	                                      .link (block3->hash ())
 	                                      .sign (keypair2.prv, keypair2.pub)
-	                                      .work (*system.work.generate (keypair2.pub))
+	                                      .work (*system.env.work.generate (keypair2.pub))
 	                                      .build ();
 	{
 		auto transaction = node.store.tx_begin_write ();
@@ -2194,12 +2180,12 @@ TEST (node, rep_weight)
 	nano::endpoint endpoint0 (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
 	nano::endpoint endpoint1 (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
 	nano::endpoint endpoint2 (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
-	std::shared_ptr<nano::transport::channel> channel0 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint0, node.network_params.protocol.protocol_version));
-	std::shared_ptr<nano::transport::channel> channel1 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint1, node.network_params.protocol.protocol_version));
-	std::shared_ptr<nano::transport::channel> channel2 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint2, node.network_params.protocol.protocol_version));
-	node.network.udp_channels.insert (endpoint0, node.network_params.protocol.protocol_version);
-	node.network.udp_channels.insert (endpoint1, node.network_params.protocol.protocol_version);
-	node.network.udp_channels.insert (endpoint2, node.network_params.protocol.protocol_version);
+	std::shared_ptr<nano::transport::channel> channel0 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint0, node.env.constants.protocol.protocol_version));
+	std::shared_ptr<nano::transport::channel> channel1 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint1, node.env.constants.protocol.protocol_version));
+	std::shared_ptr<nano::transport::channel> channel2 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint2, node.env.constants.protocol.protocol_version));
+	node.network.udp_channels.insert (endpoint0, node.env.constants.protocol.protocol_version);
+	node.network.udp_channels.insert (endpoint1, node.env.constants.protocol.protocol_version);
+	node.network.udp_channels.insert (endpoint2, node.env.constants.protocol.protocol_version);
 	auto vote0 = std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 0, genesis.open);
 	auto vote1 = std::make_shared<nano::vote> (keypair1.pub, keypair1.prv, 0, genesis.open);
 	auto vote2 = std::make_shared<nano::vote> (keypair2.pub, keypair2.prv, 0, genesis.open);
@@ -2221,9 +2207,9 @@ TEST (node, rep_weight)
 TEST (node, rep_remove)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_udp = false;
-	auto & node = *system.add_node (node_flags);
+	nano::node_config config;
+	config.flags.disable_udp = false;
+	auto & node = *system.add_node (config);
 	nano::genesis genesis;
 	nano::keypair keypair1;
 	nano::keypair keypair2;
@@ -2236,7 +2222,7 @@ TEST (node, rep_remove)
 	                                      .balance (nano::genesis_amount - node.minimum_principal_weight () * 2)
 	                                      .link (keypair1.pub)
 	                                      .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                                      .work (*system.work.generate (genesis.hash ()))
+	                                      .work (*system.env.work.generate (genesis.hash ()))
 	                                      .build ();
 	std::shared_ptr<nano::block> block2 = builder
 	                                      .state ()
@@ -2246,7 +2232,7 @@ TEST (node, rep_remove)
 	                                      .balance (node.minimum_principal_weight () * 2)
 	                                      .link (block1->hash ())
 	                                      .sign (keypair1.prv, keypair1.pub)
-	                                      .work (*system.work.generate (keypair1.pub))
+	                                      .work (*system.env.work.generate (keypair1.pub))
 	                                      .build ();
 	std::shared_ptr<nano::block> block3 = builder
 	                                      .state ()
@@ -2256,7 +2242,7 @@ TEST (node, rep_remove)
 	                                      .balance (nano::genesis_amount - node.minimum_principal_weight () * 4)
 	                                      .link (keypair2.pub)
 	                                      .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                                      .work (*system.work.generate (block1->hash ()))
+	                                      .work (*system.env.work.generate (block1->hash ()))
 	                                      .build ();
 	std::shared_ptr<nano::block> block4 = builder
 	                                      .state ()
@@ -2266,7 +2252,7 @@ TEST (node, rep_remove)
 	                                      .balance (node.minimum_principal_weight () * 2)
 	                                      .link (block3->hash ())
 	                                      .sign (keypair2.prv, keypair2.pub)
-	                                      .work (*system.work.generate (keypair2.pub))
+	                                      .work (*system.env.work.generate (keypair2.pub))
 	                                      .build ();
 	{
 		auto transaction = node.store.tx_begin_write ();
@@ -2277,9 +2263,9 @@ TEST (node, rep_remove)
 	}
 	// Add inactive UDP representative channel
 	nano::endpoint endpoint0 (boost::asio::ip::address_v6::loopback (), nano::get_available_port ());
-	std::shared_ptr<nano::transport::channel> channel0 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint0, node.network_params.protocol.protocol_version));
+	std::shared_ptr<nano::transport::channel> channel0 (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, endpoint0, node.env.constants.protocol.protocol_version));
 	nano::amount amount100 (100);
-	node.network.udp_channels.insert (endpoint0, node.network_params.protocol.protocol_version);
+	node.network.udp_channels.insert (endpoint0, node.env.constants.protocol.protocol_version);
 	auto vote1 = std::make_shared<nano::vote> (keypair1.pub, keypair1.prv, 0, genesis.open);
 	node.rep_crawler.response (channel0, vote1);
 	ASSERT_TIMELY (5s, node.rep_crawler.representative_count () == 1);
@@ -2291,7 +2277,7 @@ TEST (node, rep_remove)
 	// This UDP channel is not reachable and should timeout
 	ASSERT_TIMELY (10s, node.rep_crawler.representative_count () == 0);
 	// Add working representative
-	auto node1 = system.add_node (nano::node_config (nano::get_available_port (), system.logging));
+	auto node1 = system.add_node (nano::node_config{});
 	system.wallet (1)->insert_adhoc (nano::dev_genesis_key.prv);
 	auto channel1 (node.network.find_channel (node1->network.endpoint ()));
 	ASSERT_NE (nullptr, channel1);
@@ -2299,7 +2285,7 @@ TEST (node, rep_remove)
 	node.rep_crawler.response (channel1, vote2);
 	ASSERT_TIMELY (10s, node.rep_crawler.representative_count () == 1);
 	// Add inactive TCP representative channel
-	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::unique_path (), system.alarm, nano::node_config (nano::get_available_port (), system.logging), system.work));
+	auto node2 (std::make_shared<nano::node> (system.env, nano::node_config{}));
 	std::atomic<bool> done{ false };
 	std::weak_ptr<nano::node> node_w (node.shared ());
 	auto vote3 = std::make_shared<nano::vote> (keypair2.pub, keypair2.prv, 0, genesis.open);
@@ -2340,7 +2326,7 @@ TEST (node, no_voting)
 {
 	nano::system system (1);
 	auto & node0 (*system.nodes[0]);
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.enable_voting = false;
 	system.add_node (node_config);
 
@@ -2501,14 +2487,14 @@ TEST (node, block_confirm)
 	std::vector<nano::transport::transport_type> types{ nano::transport::transport_type::tcp, nano::transport::transport_type::udp };
 	for (auto & type : types)
 	{
-		nano::node_flags node_flags;
+		nano::node_config config;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			config.flags.disable_tcp_realtime = true;
+			config.flags.disable_bootstrap_listener = true;
+			config.flags.disable_udp = false;
 		}
-		nano::system system (2, type, node_flags);
+		nano::system system (2, type, config);
 		auto & node1 (*system.nodes[0]);
 		auto & node2 (*system.nodes[1]);
 		nano::genesis genesis;
@@ -2626,7 +2612,7 @@ TEST (node, confirm_quorum)
 TEST (node, local_votes_cache)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.receive_minimum = nano::genesis_amount;
 	auto & node (*system.add_node (node_config));
@@ -2732,10 +2718,10 @@ TEST (node, local_votes_cache)
 TEST (node, local_votes_cache_batch)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
-	ASSERT_GE (node.network_params.voting.max_cache, 2);
+	ASSERT_GE (node.env.constants.voting.max_cache, 2);
 	nano::genesis genesis;
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	auto send1 = nano::state_block_builder ()
@@ -2782,7 +2768,7 @@ TEST (node, local_votes_cache_batch)
 TEST (node, local_votes_cache_generate_new_vote)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -2848,14 +2834,14 @@ TEST (node, vote_republish)
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto send2 = builder.make_block ()
 	             .previous (genesis.hash ())
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number () * 2)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	node1.process_active (send1);
 	ASSERT_TIMELY (5s, node2.block (send1->hash ()));
@@ -2863,7 +2849,7 @@ TEST (node, vote_republish)
 	auto vote (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 0, send2));
 	ASSERT_TRUE (node1.active.active (*send1));
 	ASSERT_TRUE (node2.active.active (*send1));
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.network_params.protocol.protocol_version));
+	node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.env.constants.protocol.protocol_version));
 	ASSERT_TIMELY (10s, node1.block (send2->hash ()));
 	ASSERT_TIMELY (10s, node2.block (send2->hash ()));
 	ASSERT_FALSE (node1.block (send1->hash ()));
@@ -2903,14 +2889,14 @@ TEST (node, vote_by_hash_republish)
 	std::vector<nano::transport::transport_type> types{ nano::transport::transport_type::tcp, nano::transport::transport_type::udp };
 	for (auto & type : types)
 	{
-		nano::node_flags node_flags;
+		nano::node_config config;
 		if (type == nano::transport::transport_type::udp)
 		{
-			node_flags.disable_tcp_realtime = true;
-			node_flags.disable_bootstrap_listener = true;
-			node_flags.disable_udp = false;
+			config.flags.disable_tcp_realtime = true;
+			config.flags.disable_bootstrap_listener = true;
+			config.flags.disable_udp = false;
 		}
-		nano::system system (2, type, node_flags);
+		nano::system system (2, type, config);
 		auto & node1 (*system.nodes[0]);
 		auto & node2 (*system.nodes[1]);
 		nano::keypair key2;
@@ -2922,14 +2908,14 @@ TEST (node, vote_by_hash_republish)
 		             .destination (key2.pub)
 		             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number ())
 		             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		             .work (*system.work.generate (genesis.hash ()))
+		             .work (*system.env.work.generate (genesis.hash ()))
 		             .build_shared ();
 		auto send2 = builder.make_block ()
 		             .previous (genesis.hash ())
 		             .destination (key2.pub)
 		             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number () * 2)
 		             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		             .work (*system.work.generate (genesis.hash ()))
+		             .work (*system.env.work.generate (genesis.hash ()))
 		             .build_shared ();
 		node1.process_active (send1);
 		ASSERT_TIMELY (5s, node2.block (send1->hash ()));
@@ -2939,7 +2925,7 @@ TEST (node, vote_by_hash_republish)
 		auto vote (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 0, vote_blocks));
 		ASSERT_TRUE (node1.active.active (*send1));
 		ASSERT_TRUE (node2.active.active (*send1));
-		node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.network_params.protocol.protocol_version));
+		node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.env.constants.protocol.protocol_version));
 		ASSERT_TIMELY (10s, node1.block (send2->hash ()));
 		ASSERT_TIMELY (10s, node2.block (send2->hash ()));
 		ASSERT_FALSE (node1.block (send1->hash ()));
@@ -2962,7 +2948,7 @@ TEST (node, vote_by_hash_epoch_block_republish)
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto epoch1 = nano::state_block_builder ()
 	              .account (nano::genesis_account)
@@ -2971,7 +2957,7 @@ TEST (node, vote_by_hash_epoch_block_republish)
 	              .balance (nano::genesis_amount)
 	              .link (node1.ledger.epoch_link (nano::epoch::epoch_1))
 	              .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	              .work (*system.work.generate (genesis.hash ()))
+	              .work (*system.env.work.generate (genesis.hash ()))
 	              .build_shared ();
 	node1.process_active (send1);
 	ASSERT_TIMELY (5s, node2.block (send1->hash ()));
@@ -2981,7 +2967,7 @@ TEST (node, vote_by_hash_epoch_block_republish)
 	auto vote (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 0, vote_blocks));
 	ASSERT_TRUE (node1.active.active (*send1));
 	ASSERT_TRUE (node2.active.active (*send1));
-	node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.network_params.protocol.protocol_version));
+	node1.vote_processor.vote (vote, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.env.constants.protocol.protocol_version));
 	ASSERT_TIMELY (10s, node1.block (epoch1->hash ()));
 	ASSERT_TIMELY (10s, node2.block (epoch1->hash ()));
 	ASSERT_FALSE (node1.block (send1->hash ()));
@@ -2991,10 +2977,9 @@ TEST (node, vote_by_hash_epoch_block_republish)
 TEST (node, epoch_conflict_confirm)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node0 = system.add_node (node_config);
-	node_config.peering_port = nano::get_available_port ();
 	auto node1 = system.add_node (node_config);
 	nano::keypair key;
 	nano::genesis genesis;
@@ -3007,7 +2992,7 @@ TEST (node, epoch_conflict_confirm)
 	            .balance (nano::genesis_amount - 1)
 	            .link (key.pub)
 	            .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	            .work (*system.work.generate (genesis.hash ()))
+	            .work (*system.env.work.generate (genesis.hash ()))
 	            .build_shared ();
 	auto open = builder.make_block ()
 	            .account (key.pub)
@@ -3016,7 +3001,7 @@ TEST (node, epoch_conflict_confirm)
 	            .balance (1)
 	            .link (send->hash ())
 	            .sign (key.prv, key.pub)
-	            .work (*system.work.generate (key.pub))
+	            .work (*system.env.work.generate (key.pub))
 	            .build_shared ();
 	auto change = builder.make_block ()
 	              .account (key.pub)
@@ -3025,7 +3010,7 @@ TEST (node, epoch_conflict_confirm)
 	              .balance (1)
 	              .link (0)
 	              .sign (key.prv, key.pub)
-	              .work (*system.work.generate (open->hash ()))
+	              .work (*system.env.work.generate (open->hash ()))
 	              .build_shared ();
 	auto send2 = builder.make_block ()
 	             .account (nano::dev_genesis_key.pub)
@@ -3034,7 +3019,7 @@ TEST (node, epoch_conflict_confirm)
 	             .balance (nano::genesis_amount - 2)
 	             .link (open->hash ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (send->hash ()))
+	             .work (*system.env.work.generate (send->hash ()))
 	             .build_shared ();
 	auto epoch_open = builder.make_block ()
 	                  .account (change->root ())
@@ -3043,7 +3028,7 @@ TEST (node, epoch_conflict_confirm)
 	                  .balance (0)
 	                  .link (node0->ledger.epoch_link (nano::epoch::epoch_1))
 	                  .sign (epoch_signer.prv, epoch_signer.pub)
-	                  .work (*system.work.generate (open->hash ()))
+	                  .work (*system.env.work.generate (open->hash ()))
 	                  .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node1->process (*send).code);
 	ASSERT_EQ (nano::process_result::progress, node1->process (*send2).code);
@@ -3086,15 +3071,15 @@ TEST (node, epoch_conflict_confirm)
 TEST (node, fork_invalid_block_signature)
 {
 	nano::system system;
-	nano::node_flags node_flags;
+	nano::node_config config;
 	// Disabling republishing + waiting for a rollback before sending the correct vote below fixes an intermittent failure in this test
 	// If these are taken out, one of two things may cause the test two fail often:
 	// - Block *send2* might get processed before the rollback happens, simply due to timings, with code "fork", and not be processed again. Waiting for the rollback fixes this issue.
 	// - Block *send1* might get processed again after the rollback happens, which causes *send2* to be processed with code "fork". Disabling block republishing ensures "send1" is not processed again.
 	// An alternative would be to repeatedly flood the correct vote
-	node_flags.disable_block_processor_republishing = true;
-	auto & node1 (*system.add_node (node_flags));
-	auto & node2 (*system.add_node (node_flags));
+	config.flags.disable_block_processor_republishing = true;
+	auto & node1 (*system.add_node (config));
+	auto & node2 (*system.add_node (config));
 	nano::keypair key2;
 	nano::genesis genesis;
 	nano::send_block_builder builder;
@@ -3103,14 +3088,14 @@ TEST (node, fork_invalid_block_signature)
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number ())
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto send2 = builder.make_block ()
 	             .previous (genesis.hash ())
 	             .destination (key2.pub)
 	             .balance (std::numeric_limits<nano::uint128_t>::max () - node1.config.receive_minimum.number () * 2)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	auto send2_corrupt (std::make_shared<nano::send_block> (*send2));
 	send2_corrupt->signature = nano::signature (123);
@@ -3142,7 +3127,7 @@ TEST (node, fork_election_invalid_block_signature)
 	             .representative (nano::dev_genesis_key.pub)
 	             .balance (nano::genesis_amount - nano::Gxrb_ratio)
 	             .link (nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
 	             .build_shared ();
 	auto send2 = builder.state ()
@@ -3151,7 +3136,7 @@ TEST (node, fork_election_invalid_block_signature)
 	             .representative (nano::dev_genesis_key.pub)
 	             .balance (nano::genesis_amount - 2 * nano::Gxrb_ratio)
 	             .link (nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
 	             .build_shared ();
 	auto send3 = builder.state ()
@@ -3160,7 +3145,7 @@ TEST (node, fork_election_invalid_block_signature)
 	             .representative (nano::dev_genesis_key.pub)
 	             .balance (nano::genesis_amount - 2 * nano::Gxrb_ratio)
 	             .link (nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .sign (nano::dev_genesis_key.prv, 0) // Invalid signature
 	             .build_shared ();
 	auto channel1 (node1.network.udp_channels.create (node1.network.endpoint ()));
@@ -3348,9 +3333,9 @@ TEST (node, block_processor_reject_state)
 TEST (node, block_processor_full)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.block_processor_full_size = 3;
-	auto & node = *system.add_node (nano::node_config (nano::get_available_port (), system.logging), node_flags);
+	nano::node_config config;
+	config.flags.block_processor_full_size = 3;
+	auto & node = *system.add_node (config);
 	nano::genesis genesis;
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -3394,9 +3379,9 @@ TEST (node, block_processor_full)
 TEST (node, block_processor_half_full)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.block_processor_full_size = 6;
-	auto & node = *system.add_node (nano::node_config (nano::get_available_port (), system.logging), node_flags);
+	nano::node_config config;
+	config.flags.block_processor_full_size = 6;
+	auto & node = *system.add_node (config);
 	nano::genesis genesis;
 	nano::state_block_builder builder;
 	auto send1 = builder.make_block ()
@@ -3450,7 +3435,7 @@ TEST (node, confirm_back)
 	             .destination (key.pub)
 	             .balance (genesis_start_balance - 1)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
 	nano::state_block_builder builder;
 	auto open = builder.make_block ()
@@ -3460,7 +3445,7 @@ TEST (node, confirm_back)
 	            .balance (1)
 	            .link (send1->hash ())
 	            .sign (key.prv, key.pub)
-	            .work (*system.work.generate (key.pub))
+	            .work (*system.env.work.generate (key.pub))
 	            .build_shared ();
 	auto send2 = builder.make_block ()
 	             .account (key.pub)
@@ -3469,7 +3454,7 @@ TEST (node, confirm_back)
 	             .balance (0)
 	             .link (nano::dev_genesis_key.pub)
 	             .sign (key.prv, key.pub)
-	             .work (*system.work.generate (open->hash ()))
+	             .work (*system.env.work.generate (open->hash ()))
 	             .build_shared ();
 	node.process_active (send1);
 	node.process_active (open);
@@ -3479,7 +3464,7 @@ TEST (node, confirm_back)
 	std::vector<nano::block_hash> vote_blocks;
 	vote_blocks.push_back (send2->hash ());
 	auto vote (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 0, vote_blocks));
-	node.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.network_params.protocol.protocol_version));
+	node.vote_processor.vote_blocking (vote, std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.env.constants.protocol.protocol_version));
 	ASSERT_TIMELY (10s, node.active.empty ());
 }
 
@@ -3489,7 +3474,7 @@ TEST (node, peers)
 	auto node1 (system.nodes[0]);
 	ASSERT_TRUE (node1->network.empty ());
 
-	auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.alarm, system.logging, system.work));
+	auto node2 (std::make_shared<nano::node> (system.env, nano::node_config{}));
 	system.nodes.push_back (node2);
 
 	auto endpoint = node1->network.endpoint ();
@@ -3541,7 +3526,9 @@ TEST (node, peer_cache_restart)
 	nano::endpoint_key endpoint_key{ endpoint.address ().to_v6 ().to_bytes (), endpoint.port () };
 	auto path (nano::unique_path ());
 	{
-		auto node2 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), path, system.alarm, system.logging, system.work));
+		nano::node_config config;
+		config.path = path;
+		auto node2 (std::make_shared<nano::node> (system.env, config));
 		system.nodes.push_back (node2);
 		auto & store = node2->store;
 		{
@@ -3559,9 +3546,10 @@ TEST (node, peer_cache_restart)
 	}
 	// Restart node
 	{
-		nano::node_flags node_flags;
-		node_flags.read_only = true;
-		auto node3 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), path, system.alarm, system.logging, system.work, node_flags));
+		nano::node_config config;
+		config.flags.read_only = true;
+		config.path = path;
+		auto node3 (std::make_shared<nano::node> (system.env, config));
 		system.nodes.push_back (node3);
 		// Check cached peers after restart
 		node3->network.start ();
@@ -3594,7 +3582,7 @@ TEST (node, unchecked_cleanup)
 	            .balance (1)
 	            .link (key.pub)
 	            .sign (key.prv, key.pub)
-	            .work (*system.work.generate (key.pub))
+	            .work (*system.env.work.generate (key.pub))
 	            .build_shared ();
 	std::vector<uint8_t> bytes;
 	{
@@ -3660,24 +3648,25 @@ TEST (node, dont_write_lock_node)
 	write_lock_held_promise.get_future ().wait ();
 
 	// Check inactive node can finish executing while a write lock is open
-	nano::inactive_node node (path, nano::inactive_node_flag_defaults ());
+	nano::environment env{ path };
+	nano::node_flags flags;
+	auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive) };
+	nano::inactive_node node{ env, flags };
 	finished_promise.set_value ();
 }
 
 TEST (node, bidirectional_tcp)
 {
 	nano::system system;
-	nano::node_flags node_flags;
+	nano::node_config config;
 	// Disable bootstrap to start elections for new blocks
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_wallet_bootstrap = true;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto node1 = system.add_node (node_config, node_flags);
-	node_config.peering_port = nano::get_available_port ();
-	node_config.tcp_incoming_connections_max = 0; // Disable incoming TCP connections for node 2
-	auto node2 = system.add_node (node_config, node_flags);
+	config.flags.disable_legacy_bootstrap = true;
+	config.flags.disable_lazy_bootstrap = true;
+	config.flags.disable_wallet_bootstrap = true;
+	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
+	auto node1 = system.add_node (config);
+	config.tcp_incoming_connections_max = 0; // Disable incoming TCP connections for node 2
+	auto node2 = system.add_node (config);
 	// Check network connections
 	ASSERT_EQ (1, node1->network.size ());
 	ASSERT_EQ (1, node2->network.size ());
@@ -3761,25 +3750,26 @@ TEST (node, bidirectional_tcp)
 TEST (node, aggressive_flooding)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_block_processor_republishing = true;
-	node_flags.disable_bootstrap_bulk_push_client = true;
-	node_flags.disable_bootstrap_bulk_pull_server = true;
-	node_flags.disable_bootstrap_listener = true;
-	node_flags.disable_lazy_bootstrap = true;
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_wallet_bootstrap = true;
-	auto & node1 (*system.add_node (node_flags));
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	config.flags.disable_block_processor_republishing = true;
+	config.flags.disable_bootstrap_bulk_push_client = true;
+	config.flags.disable_bootstrap_bulk_pull_server = true;
+	config.flags.disable_bootstrap_listener = true;
+	config.flags.disable_lazy_bootstrap = true;
+	config.flags.disable_legacy_bootstrap = true;
+	config.flags.disable_wallet_bootstrap = true;
+	auto & node1 (*system.add_node (config));
 	auto & wallet1 (*system.wallet (0));
 	wallet1.insert_adhoc (nano::dev_genesis_key.prv);
 	std::vector<std::pair<std::shared_ptr<nano::node>, std::shared_ptr<nano::wallet>>> nodes_wallets;
 	bool const sanitizer_or_valgrind (is_sanitizer_build || nano::running_within_valgrind ());
 	nodes_wallets.resize (!sanitizer_or_valgrind ? 5 : 3);
 
-	std::generate (nodes_wallets.begin (), nodes_wallets.end (), [&system, node_flags]() {
-		nano::node_config node_config (nano::get_available_port (), system.logging);
-		auto node (system.add_node (node_config, node_flags));
+	std::generate (nodes_wallets.begin (), nodes_wallets.end (), [&system, &config]() {
+		nano::node_config node_config;
+		node_config.flags = config.flags;
+		auto node (system.add_node (config));
 		return std::make_pair (node, system.wallet (system.nodes.size () - 1));
 	});
 
@@ -3851,7 +3841,7 @@ TEST (node, aggressive_flooding)
 TEST (node, max_work_generate_difficulty)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.max_work_generate_multiplier = 2.0;
 	auto & node = *system.add_node (node_config);
 	auto initial_difficulty = node.default_difficulty (nano::work_version::work_1);
@@ -3866,25 +3856,25 @@ TEST (node, max_work_generate_difficulty)
 TEST (active_difficulty, recalculate_work)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.enable_voting = false;
 	auto & node1 = *system.add_node (node_config);
 	nano::genesis genesis;
 	nano::keypair key1;
-	ASSERT_EQ (node1.network_params.network.publish_thresholds.epoch_1, node1.active.active_difficulty ());
+	ASSERT_EQ (node1.env.constants.network.publish_thresholds.epoch_1, node1.active.active_difficulty ());
 	auto send1 = nano::send_block_builder ()
 	             .previous (genesis.hash ())
 	             .destination (key1.pub)
 	             .balance (0)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (genesis.hash ()))
+	             .work (*system.env.work.generate (genesis.hash ()))
 	             .build_shared ();
-	auto multiplier1 = nano::difficulty::to_multiplier (send1->difficulty (), node1.network_params.network.publish_thresholds.epoch_1);
+	auto multiplier1 = nano::difficulty::to_multiplier (send1->difficulty (), node1.env.constants.network.publish_thresholds.epoch_1);
 	// Process as local block
 	node1.process_active (send1);
 	ASSERT_TIMELY (2s, !node1.active.empty ());
 	auto sum (std::accumulate (node1.active.multipliers_cb.begin (), node1.active.multipliers_cb.end (), double(0)));
-	ASSERT_EQ (node1.active.active_difficulty (), nano::difficulty::from_multiplier (sum / node1.active.multipliers_cb.size (), node1.network_params.network.publish_thresholds.epoch_1));
+	ASSERT_EQ (node1.active.active_difficulty (), nano::difficulty::from_multiplier (sum / node1.active.multipliers_cb.size (), node1.env.constants.network.publish_thresholds.epoch_1));
 	nano::unique_lock<std::mutex> lock (node1.active.mutex);
 	// Fake history records to force work recalculation
 	for (auto i (0); i < node1.active.multipliers_cb.size (); i++)
@@ -3911,9 +3901,9 @@ TEST (node, node_sequence)
 TEST (node, rollback_vote_self)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node = *system.add_node (flags);
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node = *system.add_node (config);
 	nano::state_block_builder builder;
 	nano::keypair key;
 	auto weight = node.config.online_weight_minimum.number ();
@@ -3924,7 +3914,7 @@ TEST (node, rollback_vote_self)
 	             .link (key.pub)
 	             .balance (nano::genesis_amount - weight)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (nano::genesis_hash))
+	             .work (*system.env.work.generate (nano::genesis_hash))
 	             .build_shared ();
 	auto open = builder.make_block ()
 	            .account (key.pub)
@@ -3933,7 +3923,7 @@ TEST (node, rollback_vote_self)
 	            .link (send1->hash ())
 	            .balance (weight)
 	            .sign (key.prv, key.pub)
-	            .work (*system.work.generate (key.pub))
+	            .work (*system.env.work.generate (key.pub))
 	            .build_shared ();
 	auto send2 = builder.make_block ()
 	             .from (*send1)
@@ -3941,7 +3931,7 @@ TEST (node, rollback_vote_self)
 	             .balance (send1->balance ().number () - 1)
 	             .link (nano::dev_genesis_key.pub)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (send1->hash ()))
+	             .work (*system.env.work.generate (send1->hash ()))
 	             .build_shared ();
 	auto fork = builder.make_block ()
 	            .from (*send2)
@@ -4002,7 +3992,7 @@ TEST (node, rollback_vote_self)
 TEST (node, dependency_graph)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node = *system.add_node (config);
 
@@ -4017,7 +4007,7 @@ TEST (node, dependency_graph)
 	                 .link (key1.pub)
 	                 .balance (nano::genesis_amount - 1)
 	                 .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                 .work (*system.work.generate (nano::genesis_hash))
+	                 .work (*system.env.work.generate (nano::genesis_hash))
 	                 .build_shared ();
 	// Receive from genesis
 	auto key1_open = builder.make_block ()
@@ -4027,7 +4017,7 @@ TEST (node, dependency_graph)
 	                 .link (gen_send1->hash ())
 	                 .balance (1)
 	                 .sign (key1.prv, key1.pub)
-	                 .work (*system.work.generate (key1.pub))
+	                 .work (*system.env.work.generate (key1.pub))
 	                 .build ();
 	// Send to genesis
 	auto key1_send1 = builder.make_block ()
@@ -4037,7 +4027,7 @@ TEST (node, dependency_graph)
 	                  .link (nano::dev_genesis_key.pub)
 	                  .balance (0)
 	                  .sign (key1.prv, key1.pub)
-	                  .work (*system.work.generate (key1_open->hash ()))
+	                  .work (*system.env.work.generate (key1_open->hash ()))
 	                  .build ();
 	// Receive from key1
 	auto gen_receive = builder.make_block ()
@@ -4046,7 +4036,7 @@ TEST (node, dependency_graph)
 	                   .link (key1_send1->hash ())
 	                   .balance (nano::genesis_amount)
 	                   .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                   .work (*system.work.generate (gen_send1->hash ()))
+	                   .work (*system.env.work.generate (gen_send1->hash ()))
 	                   .build ();
 	// Send to key2
 	auto gen_send2 = builder.make_block ()
@@ -4055,7 +4045,7 @@ TEST (node, dependency_graph)
 	                 .link (key2.pub)
 	                 .balance (gen_receive->balance ().number () - 2)
 	                 .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                 .work (*system.work.generate (gen_receive->hash ()))
+	                 .work (*system.env.work.generate (gen_receive->hash ()))
 	                 .build ();
 	// Receive from genesis
 	auto key2_open = builder.make_block ()
@@ -4065,7 +4055,7 @@ TEST (node, dependency_graph)
 	                 .link (gen_send2->hash ())
 	                 .balance (2)
 	                 .sign (key2.prv, key2.pub)
-	                 .work (*system.work.generate (key2.pub))
+	                 .work (*system.env.work.generate (key2.pub))
 	                 .build ();
 	// Send to key3
 	auto key2_send1 = builder.make_block ()
@@ -4075,7 +4065,7 @@ TEST (node, dependency_graph)
 	                  .link (key3.pub)
 	                  .balance (1)
 	                  .sign (key2.prv, key2.pub)
-	                  .work (*system.work.generate (key2_open->hash ()))
+	                  .work (*system.env.work.generate (key2_open->hash ()))
 	                  .build ();
 	// Receive from key2
 	auto key3_open = builder.make_block ()
@@ -4085,7 +4075,7 @@ TEST (node, dependency_graph)
 	                 .link (key2_send1->hash ())
 	                 .balance (1)
 	                 .sign (key3.prv, key3.pub)
-	                 .work (*system.work.generate (key3.pub))
+	                 .work (*system.env.work.generate (key3.pub))
 	                 .build ();
 	// Send to key1
 	auto key2_send2 = builder.make_block ()
@@ -4094,7 +4084,7 @@ TEST (node, dependency_graph)
 	                  .link (key1.pub)
 	                  .balance (key2_send1->balance ().number () - 1)
 	                  .sign (key2.prv, key2.pub)
-	                  .work (*system.work.generate (key2_send1->hash ()))
+	                  .work (*system.env.work.generate (key2_send1->hash ()))
 	                  .build ();
 	// Receive from key2
 	auto key1_receive = builder.make_block ()
@@ -4103,7 +4093,7 @@ TEST (node, dependency_graph)
 	                    .link (key2_send2->hash ())
 	                    .balance (key1_send1->balance ().number () + 1)
 	                    .sign (key1.prv, key1.pub)
-	                    .work (*system.work.generate (key1_send1->hash ()))
+	                    .work (*system.env.work.generate (key1_send1->hash ()))
 	                    .build ();
 	// Send to key3
 	auto key1_send2 = builder.make_block ()
@@ -4112,7 +4102,7 @@ TEST (node, dependency_graph)
 	                  .link (key3.pub)
 	                  .balance (key1_receive->balance ().number () - 1)
 	                  .sign (key1.prv, key1.pub)
-	                  .work (*system.work.generate (key1_receive->hash ()))
+	                  .work (*system.env.work.generate (key1_receive->hash ()))
 	                  .build ();
 	// Receive from key1
 	auto key3_receive = builder.make_block ()
@@ -4121,7 +4111,7 @@ TEST (node, dependency_graph)
 	                    .link (key1_send2->hash ())
 	                    .balance (key3_open->balance ().number () + 1)
 	                    .sign (key3.prv, key3.pub)
-	                    .work (*system.work.generate (key3_open->hash ()))
+	                    .work (*system.env.work.generate (key3_open->hash ()))
 	                    .build ();
 	// Upgrade key3
 	auto key3_epoch = builder.make_block ()
@@ -4130,7 +4120,7 @@ TEST (node, dependency_graph)
 	                  .link (node.ledger.epoch_link (nano::epoch::epoch_1))
 	                  .balance (key3_receive->balance ())
 	                  .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                  .work (*system.work.generate (key3_receive->hash ()))
+	                  .work (*system.env.work.generate (key3_receive->hash ()))
 	                  .build ();
 
 	ASSERT_EQ (nano::process_result::progress, node.process (*gen_send1).code);
@@ -4200,10 +4190,9 @@ TEST (node, dependency_graph)
 TEST (node, dependency_graph_frontier)
 {
 	nano::system system;
-	nano::node_config config (nano::get_available_port (), system.logging);
+	nano::node_config config;
 	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node1 = *system.add_node (config);
-	config.peering_port = nano::get_available_port ();
 	auto & node2 = *system.add_node (config);
 
 	nano::state_block_builder builder;
@@ -4217,7 +4206,7 @@ TEST (node, dependency_graph_frontier)
 	                 .link (key1.pub)
 	                 .balance (nano::genesis_amount - 1)
 	                 .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                 .work (*system.work.generate (nano::genesis_hash))
+	                 .work (*system.env.work.generate (nano::genesis_hash))
 	                 .build_shared ();
 	// Receive from genesis
 	auto key1_open = builder.make_block ()
@@ -4227,7 +4216,7 @@ TEST (node, dependency_graph_frontier)
 	                 .link (gen_send1->hash ())
 	                 .balance (1)
 	                 .sign (key1.prv, key1.pub)
-	                 .work (*system.work.generate (key1.pub))
+	                 .work (*system.env.work.generate (key1.pub))
 	                 .build ();
 	// Send to genesis
 	auto key1_send1 = builder.make_block ()
@@ -4237,7 +4226,7 @@ TEST (node, dependency_graph_frontier)
 	                  .link (nano::dev_genesis_key.pub)
 	                  .balance (0)
 	                  .sign (key1.prv, key1.pub)
-	                  .work (*system.work.generate (key1_open->hash ()))
+	                  .work (*system.env.work.generate (key1_open->hash ()))
 	                  .build ();
 	// Receive from key1
 	auto gen_receive = builder.make_block ()
@@ -4246,7 +4235,7 @@ TEST (node, dependency_graph_frontier)
 	                   .link (key1_send1->hash ())
 	                   .balance (nano::genesis_amount)
 	                   .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                   .work (*system.work.generate (gen_send1->hash ()))
+	                   .work (*system.env.work.generate (gen_send1->hash ()))
 	                   .build ();
 	// Send to key2
 	auto gen_send2 = builder.make_block ()
@@ -4255,7 +4244,7 @@ TEST (node, dependency_graph_frontier)
 	                 .link (key2.pub)
 	                 .balance (gen_receive->balance ().number () - 2)
 	                 .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                 .work (*system.work.generate (gen_receive->hash ()))
+	                 .work (*system.env.work.generate (gen_receive->hash ()))
 	                 .build ();
 	// Receive from genesis
 	auto key2_open = builder.make_block ()
@@ -4265,7 +4254,7 @@ TEST (node, dependency_graph_frontier)
 	                 .link (gen_send2->hash ())
 	                 .balance (2)
 	                 .sign (key2.prv, key2.pub)
-	                 .work (*system.work.generate (key2.pub))
+	                 .work (*system.env.work.generate (key2.pub))
 	                 .build ();
 	// Send to key3
 	auto key2_send1 = builder.make_block ()
@@ -4275,7 +4264,7 @@ TEST (node, dependency_graph_frontier)
 	                  .link (key3.pub)
 	                  .balance (1)
 	                  .sign (key2.prv, key2.pub)
-	                  .work (*system.work.generate (key2_open->hash ()))
+	                  .work (*system.env.work.generate (key2_open->hash ()))
 	                  .build ();
 	// Receive from key2
 	auto key3_open = builder.make_block ()
@@ -4285,7 +4274,7 @@ TEST (node, dependency_graph_frontier)
 	                 .link (key2_send1->hash ())
 	                 .balance (1)
 	                 .sign (key3.prv, key3.pub)
-	                 .work (*system.work.generate (key3.pub))
+	                 .work (*system.env.work.generate (key3.pub))
 	                 .build ();
 	// Send to key1
 	auto key2_send2 = builder.make_block ()
@@ -4294,7 +4283,7 @@ TEST (node, dependency_graph_frontier)
 	                  .link (key1.pub)
 	                  .balance (key2_send1->balance ().number () - 1)
 	                  .sign (key2.prv, key2.pub)
-	                  .work (*system.work.generate (key2_send1->hash ()))
+	                  .work (*system.env.work.generate (key2_send1->hash ()))
 	                  .build ();
 	// Receive from key2
 	auto key1_receive = builder.make_block ()
@@ -4303,7 +4292,7 @@ TEST (node, dependency_graph_frontier)
 	                    .link (key2_send2->hash ())
 	                    .balance (key1_send1->balance ().number () + 1)
 	                    .sign (key1.prv, key1.pub)
-	                    .work (*system.work.generate (key1_send1->hash ()))
+	                    .work (*system.env.work.generate (key1_send1->hash ()))
 	                    .build ();
 	// Send to key3
 	auto key1_send2 = builder.make_block ()
@@ -4312,7 +4301,7 @@ TEST (node, dependency_graph_frontier)
 	                  .link (key3.pub)
 	                  .balance (key1_receive->balance ().number () - 1)
 	                  .sign (key1.prv, key1.pub)
-	                  .work (*system.work.generate (key1_receive->hash ()))
+	                  .work (*system.env.work.generate (key1_receive->hash ()))
 	                  .build ();
 	// Receive from key1
 	auto key3_receive = builder.make_block ()
@@ -4321,7 +4310,7 @@ TEST (node, dependency_graph_frontier)
 	                    .link (key1_send2->hash ())
 	                    .balance (key3_open->balance ().number () + 1)
 	                    .sign (key3.prv, key3.pub)
-	                    .work (*system.work.generate (key3_open->hash ()))
+	                    .work (*system.env.work.generate (key3_open->hash ()))
 	                    .build ();
 	// Upgrade key3
 	auto key3_epoch = builder.make_block ()
@@ -4330,7 +4319,7 @@ TEST (node, dependency_graph_frontier)
 	                  .link (node1.ledger.epoch_link (nano::epoch::epoch_1))
 	                  .balance (key3_receive->balance ())
 	                  .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                  .work (*system.work.generate (key3_receive->hash ()))
+	                  .work (*system.env.work.generate (key3_receive->hash ()))
 	                  .build ();
 
 	for (auto const & node : system.nodes)
@@ -4375,10 +4364,10 @@ namespace nano
 TEST (node, deferred_dependent_elections)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node = *system.add_node (flags);
-	auto & node2 = *system.add_node (flags); // node2 will be used to ensure all blocks are being propagated
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node = *system.add_node (config);
+	auto & node2 = *system.add_node (config); // node2 will be used to ensure all blocks are being propagated
 
 	nano::state_block_builder builder;
 	nano::keypair key;
@@ -4389,7 +4378,7 @@ TEST (node, deferred_dependent_elections)
 	             .link (key.pub)
 	             .balance (nano::genesis_amount - 1)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (nano::genesis_hash))
+	             .work (*system.env.work.generate (nano::genesis_hash))
 	             .build_shared ();
 	auto open = builder.make_block ()
 	            .account (key.pub)
@@ -4398,7 +4387,7 @@ TEST (node, deferred_dependent_elections)
 	            .link (send1->hash ())
 	            .balance (1)
 	            .sign (key.prv, key.pub)
-	            .work (*system.work.generate (key.pub))
+	            .work (*system.env.work.generate (key.pub))
 	            .build_shared ();
 	auto send2 = builder.make_block ()
 	             .from (*send1)
@@ -4406,7 +4395,7 @@ TEST (node, deferred_dependent_elections)
 	             .balance (send1->balance ().number () - 1)
 	             .link (key.pub)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (send1->hash ()))
+	             .work (*system.env.work.generate (send1->hash ()))
 	             .build_shared ();
 	auto receive = builder.make_block ()
 	               .from (*open)
@@ -4414,7 +4403,7 @@ TEST (node, deferred_dependent_elections)
 	               .link (send2->hash ())
 	               .balance (2)
 	               .sign (key.prv, key.pub)
-	               .work (*system.work.generate (open->hash ()))
+	               .work (*system.env.work.generate (open->hash ()))
 	               .build_shared ();
 	auto fork = builder.make_block ()
 	            .from (*receive)

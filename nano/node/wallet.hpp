@@ -153,7 +153,7 @@ public:
 	nano::public_key change_seed (nano::transaction const & transaction_a, nano::raw_key const & prv_a, uint32_t count = 0);
 	void deterministic_restore (nano::transaction const & transaction_a);
 	bool live ();
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	std::unordered_set<nano::account> free_accounts;
 	std::function<void(bool, bool)> lock_observer;
 	nano::wallet_store store;
@@ -229,7 +229,7 @@ public:
 	void ongoing_compute_reps ();
 	void split_if_needed (nano::transaction &, nano::block_store &);
 	void move_table (std::string const &, MDB_txn *, MDB_txn *);
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	std::function<void(bool)> observer;
 	std::unordered_map<nano::wallet_id, std::shared_ptr<nano::wallet>> items;
 	std::multimap<nano::uint128_t, std::pair<std::shared_ptr<nano::wallet>, std::function<void(nano::wallet &)>>, std::greater<nano::uint128_t>> actions;

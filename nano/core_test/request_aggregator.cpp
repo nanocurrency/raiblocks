@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 TEST (request_aggregator, one)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -46,7 +46,7 @@ TEST (request_aggregator, one)
 TEST (request_aggregator, one_update)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -79,7 +79,7 @@ TEST (request_aggregator, one_update)
 TEST (request_aggregator, two)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -120,13 +120,11 @@ TEST (request_aggregator, two)
 TEST (request_aggregator, two_endpoints)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.disable_rep_crawler = true;
-	auto & node1 (*system.add_node (node_config, node_flags));
-	node_config.peering_port = nano::get_available_port ();
-	auto & node2 (*system.add_node (node_config, node_flags));
+	node_config.flags.disable_rep_crawler = true;
+	auto & node1 (*system.add_node (node_config));
+	auto & node2 (*system.add_node (node_config));
 	nano::genesis genesis;
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	auto send1 (std::make_shared<nano::state_block> (nano::dev_genesis_key.pub, genesis.hash (), nano::dev_genesis_key.pub, nano::genesis_amount - nano::Gxrb_ratio, nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *node1.work_generate_blocking (genesis.hash ())));
@@ -156,7 +154,7 @@ TEST (request_aggregator, split)
 {
 	constexpr size_t max_vbh = nano::network::confirm_ack_hashes_max;
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -176,7 +174,7 @@ TEST (request_aggregator, split)
 		                  .balance (nano::genesis_amount - (i + 1))
 		                  .link (nano::dev_genesis_key.pub)
 		                  .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		                  .work (*system.work.generate (previous))
+		                  .work (*system.env.work.generate (previous))
 		                  .build ());
 		auto const & block = blocks.back ();
 		previous = block->hash ();
@@ -213,7 +211,7 @@ TEST (request_aggregator, split)
 TEST (request_aggregator, channel_lifetime)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -234,7 +232,7 @@ TEST (request_aggregator, channel_lifetime)
 TEST (request_aggregator, channel_update)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -262,7 +260,7 @@ TEST (request_aggregator, channel_update)
 TEST (request_aggregator, channel_max_queue)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	node_config.max_queued_requests = 1;
 	auto & node (*system.add_node (node_config));
@@ -281,7 +279,7 @@ TEST (request_aggregator, channel_max_queue)
 TEST (request_aggregator, unique)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -304,10 +302,9 @@ namespace nano
 TEST (request_aggregator, cannot_vote)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node (*system.add_node (flags));
-	// This prevents activation of blocks which are cemented
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node (*system.add_node (config));
 	node.confirmation_height_processor.cemented_observers.clear ();
 	nano::genesis genesis;
 	nano::state_block_builder builder;
@@ -318,14 +315,14 @@ TEST (request_aggregator, cannot_vote)
 	             .balance (nano::genesis_amount - 1)
 	             .link (nano::dev_genesis_key.pub)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (nano::genesis_hash))
+	             .work (*system.env.work.generate (nano::genesis_hash))
 	             .build_shared ();
 	auto send2 = builder.make_block ()
 	             .from (*send1)
 	             .previous (send1->hash ())
 	             .balance (send1->balance ().number () - 1)
 	             .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	             .work (*system.work.generate (send1->hash ()))
+	             .work (*system.env.work.generate (send1->hash ()))
 	             .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node.process (*send1).code);
 	ASSERT_EQ (nano::process_result::progress, node.process (*send2).code);

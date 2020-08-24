@@ -12,6 +12,7 @@
 #include <nano/node/confirmation_height_processor.hpp>
 #include <nano/node/distributed_work_factory.hpp>
 #include <nano/node/election.hpp>
+#include <nano/node/environment.hpp>
 #include <nano/node/gap_cache.hpp>
 #include <nano/node/network.hpp>
 #include <nano/node/node_observers.hpp>
@@ -44,13 +45,14 @@
 
 namespace nano
 {
+class environment;
+class node;
+class telemetry;
+class work_pool;
 namespace websocket
 {
 	class listener;
 }
-class node;
-class telemetry;
-class work_pool;
 class block_arrival_info final
 {
 public:
@@ -87,13 +89,12 @@ std::unique_ptr<container_info_component> collect_container_info (rep_crawler & 
 class node final : public std::enable_shared_from_this<nano::node>
 {
 public:
-	node (boost::asio::io_context &, uint16_t, boost::filesystem::path const &, nano::alarm &, nano::logging const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
-	node (boost::asio::io_context &, boost::filesystem::path const &, nano::alarm &, nano::node_config const &, nano::work_pool &, nano::node_flags = nano::node_flags (), unsigned seq = 0);
+	node (nano::environment & env_a, nano::node_config const &);
 	~node ();
 	template <typename T>
 	void background (T action_a)
 	{
-		alarm.io_ctx.post (action_a);
+		env.ctx.post (action_a);
 	}
 	bool copy_with_compaction (boost::filesystem::path const &);
 	void keepalive (std::string const &, uint16_t);
@@ -148,17 +149,15 @@ public:
 	bool init_error () const;
 	bool epoch_upgrader (nano::private_key const &, nano::epoch, uint64_t, uint64_t);
 	std::pair<uint64_t, decltype (nano::ledger::bootstrap_weights)> get_bootstrap_weights () const;
+	boost::filesystem::path path_or_default (boost::filesystem::path const &) const;
+	nano::environment & env;
+	boost::filesystem::path path;
 	nano::worker worker;
 	nano::write_database_queue write_database_queue;
-	boost::asio::io_context & io_ctx;
 	boost::latch node_initialized_latch;
-	nano::network_params network_params;
 	nano::node_config config;
 	nano::stat stats;
 	std::shared_ptr<nano::websocket::listener> websocket_server;
-	nano::node_flags flags;
-	nano::alarm & alarm;
-	nano::work_pool & work;
 	nano::distributed_work_factory distributed_work;
 	nano::logger_mt logger;
 	std::unique_ptr<nano::block_store> store_impl;
@@ -172,7 +171,6 @@ public:
 	std::shared_ptr<nano::telemetry> telemetry;
 	nano::bootstrap_initiator bootstrap_initiator;
 	nano::bootstrap_listener bootstrap;
-	boost::filesystem::path application_path;
 	nano::node_observers observers;
 	nano::port_mapping port_mapping;
 	nano::vote_processor vote_processor;
@@ -198,7 +196,7 @@ public:
 	static double constexpr price_max = 16.0;
 	static double constexpr free_cutoff = 1024.0;
 	// For tests only
-	unsigned node_seq;
+	unsigned node_seq{ 0 };
 	// For tests only
 	boost::optional<uint64_t> work_generate_blocking (nano::block &);
 	// For tests only
@@ -214,17 +212,12 @@ private:
 
 std::unique_ptr<container_info_component> collect_container_info (node & node, const std::string & name);
 
-nano::node_flags const & inactive_node_flag_defaults ();
-
 class inactive_node final
 {
 public:
-	inactive_node (boost::filesystem::path const & path_a, nano::node_flags const & node_flags_a);
+	inactive_node (nano::environment & env_a, nano::node_flags const & flags_a);
 	~inactive_node ();
-	std::shared_ptr<boost::asio::io_context> io_context;
-	nano::alarm alarm;
-	nano::work_pool work;
 	std::shared_ptr<nano::node> node;
 };
-std::unique_ptr<nano::inactive_node> default_inactive_node (boost::filesystem::path const &, boost::program_options::variables_map const &);
+std::unique_ptr<nano::inactive_node> default_inactive_node (nano::environment & env_a, boost::program_options::variables_map const & vm_a);
 }

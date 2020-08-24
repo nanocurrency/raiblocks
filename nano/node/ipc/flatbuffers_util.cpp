@@ -5,7 +5,7 @@
 
 std::unique_ptr<nanoapi::BlockStateT> nano::ipc::flatbuffers_builder::from (nano::state_block const & block_a, nano::amount const & amount_a, bool is_state_send_a)
 {
-	static nano::network_params params;
+	static nano::environment_constants constants;
 	auto block (std::make_unique<nanoapi::BlockStateT> ());
 	block->account = block_a.account ().to_account ();
 	block->hash = block_a.hash ().to_string ();
@@ -25,7 +25,7 @@ std::unique_ptr<nanoapi::BlockStateT> nano::ipc::flatbuffers_builder::from (nano
 	{
 		block->subtype = nanoapi::BlockSubType::BlockSubType_change;
 	}
-	else if (amount_a == 0 && params.ledger.epochs.is_epoch_link (block_a.link ()))
+	else if (amount_a == 0 && constants.ledger.epochs.is_epoch_link (block_a.link ()))
 	{
 		block->subtype = nanoapi::BlockSubType::BlockSubType_epoch;
 	}

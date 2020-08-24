@@ -25,7 +25,7 @@ node (node_a),
 node_w (node_a.shared ()),
 request (request_a),
 backoff (backoff_a),
-strand (node_a.io_ctx.get_executor ()),
+strand (node_a.env.ctx.get_executor ()),
 need_resolve (request_a.peers),
 elapsed (nano::timer_state::started, "distributed work generation timer")
 {
@@ -107,7 +107,7 @@ void nano::distributed_work::start_local ()
 {
 	auto this_l (shared_from_this ());
 	local_generation_started = true;
-	node.work.generate (request.version, request.root, request.difficulty, [this_l](boost::optional<uint64_t> const & work_a) {
+	node.env.work.generate (request.version, request.root, request.difficulty, [this_l](boost::optional<uint64_t> const & work_a) {
 		if (work_a.is_initialized ())
 		{
 			this_l->set_once (*work_a);
@@ -127,7 +127,7 @@ void nano::distributed_work::start_local ()
 void nano::distributed_work::do_request (nano::tcp_endpoint const & endpoint_a)
 {
 	auto this_l (shared_from_this ());
-	auto connection (std::make_shared<peer_request> (node.io_ctx, endpoint_a));
+	auto connection (std::make_shared<peer_request> (node.env.ctx, endpoint_a));
 	{
 		nano::lock_guard<std::mutex> lock (mutex);
 		connections.emplace_back (connection);
@@ -199,7 +199,7 @@ void nano::distributed_work::do_request (nano::tcp_endpoint const & endpoint_a)
 void nano::distributed_work::do_cancel (nano::tcp_endpoint const & endpoint_a)
 {
 	auto this_l (shared_from_this ());
-	auto cancelling_l (std::make_shared<peer_request> (node.io_ctx, endpoint_a));
+	auto cancelling_l (std::make_shared<peer_request> (node.env.ctx, endpoint_a));
 	cancelling_l->socket.async_connect (cancelling_l->endpoint,
 	boost::asio::bind_executor (strand,
 	[this_l, cancelling_l](boost::system::error_code const & ec) {
@@ -274,7 +274,7 @@ void nano::distributed_work::stop_once (bool const local_stop_a)
 		nano::lock_guard<std::mutex> guard (mutex);
 		if (local_stop_a && node.local_work_generation_enabled ())
 		{
-			node.work.cancel (request.root);
+			node.env.work.cancel (request.root);
 		}
 		for (auto & connection_w : connections)
 		{
@@ -368,7 +368,7 @@ void nano::distributed_work::handle_failure ()
 			auto now (std::chrono::steady_clock::now ());
 			std::weak_ptr<nano::node> node_w (node.shared ());
 			auto next_backoff (std::min (backoff * 2, std::chrono::seconds (5 * 60)));
-			node.alarm.add (now + std::chrono::seconds (backoff), [node_w, request_l = request, next_backoff] {
+			node.env.alarm.add (now + std::chrono::seconds (backoff), [node_w, request_l = request, next_backoff] {
 				bool error_l{ true };
 				if (auto node_l = node_w.lock ())
 				{

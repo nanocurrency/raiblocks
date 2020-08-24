@@ -19,9 +19,9 @@ namespace nano
 TEST (election, bisect_dependencies)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node = *system.add_node (flags);
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node = *system.add_node (config);
 	nano::genesis genesis;
 	nano::confirmation_height_info conf_info;
 	ASSERT_FALSE (node.store.confirmation_height_get (node.store.tx_begin_read (), nano::dev_genesis_key.pub, conf_info));
@@ -41,7 +41,7 @@ TEST (election, bisect_dependencies)
 		                  .balance (--amount)
 		                  .link (nano::dev_genesis_key.pub)
 		                  .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-		                  .work (*system.work.generate (latest->hash ()))
+		                  .work (*system.env.work.generate (latest->hash ()))
 		                  .build ());
 		ASSERT_EQ (nano::process_result::progress, node.process (*blocks.back ()).code);
 	}
@@ -96,9 +96,9 @@ TEST (election, bisect_dependencies)
 TEST (election, dependencies_open_link)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node = *system.add_node (flags);
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node = *system.add_node (config);
 
 	nano::state_block_builder builder;
 	nano::keypair key;
@@ -111,7 +111,7 @@ TEST (election, dependencies_open_link)
 	                .link (key.pub)
 	                .balance (nano::genesis_amount - 1)
 	                .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                .work (*system.work.generate (nano::genesis_hash))
+	                .work (*system.env.work.generate (nano::genesis_hash))
 	                .build ();
 	// Receive from genesis
 	auto key_open = builder.make_block ()
@@ -121,7 +121,7 @@ TEST (election, dependencies_open_link)
 	                .link (gen_send->hash ())
 	                .balance (1)
 	                .sign (key.prv, key.pub)
-	                .work (*system.work.generate (key.pub))
+	                .work (*system.env.work.generate (key.pub))
 	                .build ();
 
 	// Send to self
@@ -132,7 +132,7 @@ TEST (election, dependencies_open_link)
 	                                        .link (key.pub)
 	                                        .balance (0)
 	                                        .sign (key.prv, key.pub)
-	                                        .work (*system.work.generate (key_open->hash ()))
+	                                        .work (*system.env.work.generate (key_open->hash ()))
 	                                        .build ();
 
 	node.process (*gen_send);

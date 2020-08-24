@@ -62,6 +62,8 @@ add_library (node
 	distributed_work_factory.cpp
 	election.hpp
 	election.cpp
+	environment.hpp
+	environment.cpp
 	gap_cache.hpp
 	gap_cache.cpp
 	ipc/action_handler.hpp

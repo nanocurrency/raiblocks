@@ -3,9 +3,9 @@
 #include <nano/secure/common.hpp>
 #include <nano/secure/ledger.hpp>
 
-nano::online_reps::online_reps (nano::ledger & ledger_a, nano::network_params & network_params_a, nano::uint128_t minimum_a) :
+nano::online_reps::online_reps (nano::ledger & ledger_a, nano::environment_constants & constants_a, nano::uint128_t minimum_a) :
 ledger (ledger_a),
-network_params (network_params_a),
+constants (constants_a),
 minimum (minimum_a)
 {
 	if (!ledger.store.init_error ())
@@ -28,7 +28,7 @@ void nano::online_reps::sample ()
 {
 	auto transaction (ledger.store.tx_begin_write ({ tables::online_weight }));
 	// Discard oldest entries
-	while (ledger.store.online_weight_count (transaction) >= network_params.node.max_weight_samples)
+	while (ledger.store.online_weight_count (transaction) >= constants.node.max_weight_samples)
 	{
 		auto oldest (ledger.store.online_weight_begin (transaction));
 		debug_assert (oldest != ledger.store.online_weight_end ());
@@ -54,7 +54,7 @@ void nano::online_reps::sample ()
 nano::uint128_t nano::online_reps::trend (nano::transaction & transaction_a)
 {
 	std::vector<nano::uint128_t> items;
-	items.reserve (network_params.node.max_weight_samples + 1);
+	items.reserve (constants.node.max_weight_samples + 1);
 	items.push_back (minimum);
 	for (auto i (ledger.store.online_weight_begin (transaction_a)), n (ledger.store.online_weight_end ()); i != n; ++i)
 	{

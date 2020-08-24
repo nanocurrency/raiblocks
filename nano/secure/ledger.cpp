@@ -425,7 +425,7 @@ void ledger_processor::epoch_block_impl (nano::state_block & block_a)
 				}
 				if (result.code == nano::process_result::progress)
 				{
-					auto epoch = ledger.network_params.ledger.epochs.epoch (block_a.hashables.link);
+					auto epoch = ledger.constants.ledger.epochs.epoch (block_a.hashables.link);
 					// Must be an epoch for an unopened account or the epoch upgrade must be sequential
 					auto is_valid_epoch_upgrade = account_error ? static_cast<std::underlying_type_t<nano::epoch>> (epoch) > 0 : nano::epochs::is_sequential (info.epoch (), epoch);
 					result.code = is_valid_epoch_upgrade ? nano::process_result::progress : nano::process_result::block_position;
@@ -687,7 +687,7 @@ void ledger_processor::open_block (nano::open_block & block_a)
 					result.code = ledger.store.pending_get (transaction, key, pending) ? nano::process_result::unreceivable : nano::process_result::progress; // Has this source already been received (Malformed)
 					if (result.code == nano::process_result::progress)
 					{
-						result.code = block_a.hashables.account == ledger.network_params.ledger.burn_account ? nano::process_result::opened_burn_account : nano::process_result::progress; // Is it burning 0 account? (Malicious)
+						result.code = block_a.hashables.account == ledger.constants.ledger.burn_account ? nano::process_result::opened_burn_account : nano::process_result::progress; // Is it burning 0 account? (Malicious)
 						if (result.code == nano::process_result::progress)
 						{
 							result.code = pending.epoch == nano::epoch::epoch_0 ? nano::process_result::progress : nano::process_result::unreceivable; // Are we receiving a state-only send? (Malformed)
@@ -795,7 +795,7 @@ nano::uint128_t nano::ledger::account_pending (nano::transaction const & transac
 
 nano::process_return nano::ledger::process (nano::write_transaction const & transaction_a, nano::block & block_a, nano::signature_verification verification)
 {
-	debug_assert (!nano::work_validate_entry (block_a) || network_params.network.is_dev_network ());
+	debug_assert (!nano::work_validate_entry (block_a) || constants.network.is_dev_network ());
 	ledger_processor processor (*this, transaction_a, verification);
 	block_a.visit (processor);
 	if (processor.result.code == nano::process_result::progress)
@@ -977,8 +977,8 @@ nano::account nano::ledger::account (nano::transaction const & transaction_a, na
 // Return amount decrease or increase for block
 nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, nano::account const & account_a)
 {
-	release_assert (account_a == network_params.ledger.genesis_account);
-	return network_params.ledger.genesis_amount;
+	release_assert (account_a == constants.ledger.genesis_account);
+	return constants.ledger.genesis_amount;
 }
 
 nano::uint128_t nano::ledger::amount (nano::transaction const & transaction_a, nano::block_hash const & hash_a)
@@ -1055,7 +1055,7 @@ bool nano::ledger::can_vote (nano::transaction const & transaction_a, nano::bloc
 
 bool nano::ledger::is_epoch_link (nano::link const & link_a)
 {
-	return network_params.ledger.epochs.is_epoch_link (link_a);
+	return constants.ledger.epochs.is_epoch_link (link_a);
 }
 
 class dependent_block_visitor : public nano::block_visitor
@@ -1078,7 +1078,7 @@ public:
 	}
 	void open_block (nano::open_block const & block_a) override
 	{
-		if (block_a.source () != ledger.network_params.ledger.genesis_account)
+		if (block_a.source () != ledger.constants.ledger.genesis_account)
 		{
 			result[0] = block_a.source ();
 		}
@@ -1111,12 +1111,12 @@ std::array<nano::block_hash, 2> nano::ledger::dependent_blocks (nano::transactio
 
 nano::account const & nano::ledger::epoch_signer (nano::link const & link_a) const
 {
-	return network_params.ledger.epochs.signer (network_params.ledger.epochs.epoch (link_a));
+	return constants.ledger.epochs.signer (constants.ledger.epochs.epoch (link_a));
 }
 
 nano::link const & nano::ledger::epoch_link (nano::epoch epoch_a) const
 {
-	return network_params.ledger.epochs.link (epoch_a);
+	return constants.ledger.epochs.link (epoch_a);
 }
 
 void nano::ledger::change_latest (nano::write_transaction const & transaction_a, nano::account const & account_a, nano::account_info const & old_a, nano::account_info const & new_a)

@@ -10,25 +10,25 @@ using namespace std::chrono_literals;
 TEST (confirmation_solicitor, batches)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_rep_crawler = true;
-	node_flags.disable_udp = false;
-	auto & node1 = *system.add_node (node_flags);
-	node_flags.disable_request_loop = true;
-	auto & node2 = *system.add_node (node_flags);
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	config.flags.disable_rep_crawler = true;
+	config.flags.disable_udp = false;
+	auto & node1 = *system.add_node (config);
+	config.flags.disable_request_loop = true;
+	auto & node2 = *system.add_node (config);
 	auto channel1 (node2.network.udp_channels.create (node1.network.endpoint ()));
 	// Solicitor will only solicit from this representative
 	nano::representative representative (nano::dev_genesis_key.pub, nano::genesis_amount, channel1);
 	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (node2.network, node2.network_params.network);
+	nano::confirmation_solicitor solicitor (node2.network, node2.env.constants.network);
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1, representatives.front ().channel);
 	ASSERT_EQ (nano::dev_genesis_key.pub, representatives.front ().account);
 	ASSERT_TIMELY (3s, node2.network.size () == 1);
-	auto send (std::make_shared<nano::send_block> (nano::genesis_hash, nano::keypair ().pub, nano::genesis_amount - 100, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (nano::genesis_hash)));
+	auto send (std::make_shared<nano::send_block> (nano::genesis_hash, nano::keypair ().pub, nano::genesis_amount - 100, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (nano::genesis_hash)));
 	send->sideband_set ({});
 	{
 		nano::lock_guard<std::mutex> guard (node2.active.mutex);
@@ -54,24 +54,24 @@ TEST (confirmation_solicitor, batches)
 TEST (confirmation_solicitor, different_hash)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.disable_request_loop = true;
-	node_flags.disable_rep_crawler = true;
-	node_flags.disable_udp = false;
-	auto & node1 = *system.add_node (node_flags);
-	auto & node2 = *system.add_node (node_flags);
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	config.flags.disable_rep_crawler = true;
+	config.flags.disable_udp = false;
+	auto & node1 = *system.add_node (config);
+	auto & node2 = *system.add_node (config);
 	auto channel1 (node2.network.udp_channels.create (node1.network.endpoint ()));
 	// Solicitor will only solicit from this representative
 	nano::representative representative (nano::dev_genesis_key.pub, nano::genesis_amount, channel1);
 	std::vector<nano::representative> representatives{ representative };
-	nano::confirmation_solicitor solicitor (node2.network, node2.network_params.network);
+	nano::confirmation_solicitor solicitor (node2.network, node2.env.constants.network);
 	solicitor.prepare (representatives);
 	// Ensure the representatives are correct
 	ASSERT_EQ (1, representatives.size ());
 	ASSERT_EQ (channel1, representatives.front ().channel);
 	ASSERT_EQ (nano::dev_genesis_key.pub, representatives.front ().account);
 	ASSERT_TIMELY (3s, node2.network.size () == 1);
-	auto send (std::make_shared<nano::send_block> (nano::genesis_hash, nano::keypair ().pub, nano::genesis_amount - 100, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (nano::genesis_hash)));
+	auto send (std::make_shared<nano::send_block> (nano::genesis_hash, nano::keypair ().pub, nano::genesis_amount - 100, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (nano::genesis_hash)));
 	send->sideband_set ({});
 	{
 		nano::lock_guard<std::mutex> guard (node2.active.mutex);

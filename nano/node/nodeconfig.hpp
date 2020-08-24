@@ -28,91 +28,6 @@ enum class frontiers_confirmation_mode : uint8_t
 	invalid
 };
 
-/**
- * Node configuration
- */
-class node_config
-{
-public:
-	node_config ();
-	node_config (uint16_t, nano::logging const &);
-	nano::error serialize_json (nano::jsonconfig &) const;
-	nano::error deserialize_json (bool &, nano::jsonconfig &);
-	nano::error serialize_toml (nano::tomlconfig &) const;
-	nano::error deserialize_toml (nano::tomlconfig &);
-	bool upgrade_json (unsigned, nano::jsonconfig &);
-	nano::account random_representative () const;
-	nano::network_params network_params;
-	uint16_t peering_port{ 0 };
-	nano::logging logging;
-	std::vector<std::pair<std::string, uint16_t>> work_peers;
-	std::vector<std::pair<std::string, uint16_t>> secondary_work_peers{ { "127.0.0.1", 8076 } }; /* Default of nano-pow-server */
-	std::vector<std::string> preconfigured_peers;
-	std::vector<nano::account> preconfigured_representatives;
-	unsigned bootstrap_fraction_numerator{ 1 };
-	nano::amount receive_minimum{ nano::xrb_ratio };
-	nano::amount vote_minimum{ nano::Gxrb_ratio };
-	std::chrono::milliseconds vote_generator_delay{ std::chrono::milliseconds (100) };
-	unsigned vote_generator_threshold{ 3 };
-	nano::amount online_weight_minimum{ 60000 * nano::Gxrb_ratio };
-	unsigned online_weight_quorum{ 50 };
-	unsigned password_fanout{ 1024 };
-	unsigned io_threads{ std::max<unsigned> (4, std::thread::hardware_concurrency ()) };
-	unsigned network_threads{ std::max<unsigned> (4, std::thread::hardware_concurrency ()) };
-	unsigned work_threads{ std::max<unsigned> (4, std::thread::hardware_concurrency ()) };
-	/* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
-	unsigned signature_checker_threads{ std::thread::hardware_concurrency () / 2 };
-	bool enable_voting{ false };
-	unsigned bootstrap_connections{ 4 };
-	unsigned bootstrap_connections_max{ 64 };
-	unsigned bootstrap_initiator_threads{ 1 };
-	nano::websocket::config websocket_config;
-	nano::diagnostics_config diagnostics_config;
-	size_t confirmation_history_size{ 2048 };
-	std::string callback_address;
-	uint16_t callback_port{ 0 };
-	std::string callback_target;
-	int deprecated_lmdb_max_dbs{ 128 };
-	bool allow_local_peers{ !(network_params.network.is_live_network () || network_params.network.is_test_network ()) }; // disable by default for live network
-	nano::stat_config stat_config;
-	nano::ipc::ipc_config ipc_config;
-	std::string external_address;
-	uint16_t external_port{ 0 };
-	std::chrono::milliseconds block_processor_batch_max_time{ network_params.network.is_dev_network () ? std::chrono::milliseconds (500) : std::chrono::milliseconds (5000) };
-	std::chrono::seconds unchecked_cutoff_time{ std::chrono::seconds (4 * 60 * 60) }; // 4 hours
-	/** Timeout for initiated async operations */
-	std::chrono::seconds tcp_io_timeout{ (network_params.network.is_dev_network () && !is_sanitizer_build) ? std::chrono::seconds (5) : std::chrono::seconds (15) };
-	std::chrono::nanoseconds pow_sleep_interval{ 0 };
-	size_t active_elections_size{ 50000 };
-	/** Default maximum incoming TCP connections, including realtime network & bootstrap */
-	unsigned tcp_incoming_connections_max{ 1024 };
-	bool use_memory_pools{ true };
-	static std::chrono::seconds constexpr keepalive_period = std::chrono::seconds (60);
-	static std::chrono::seconds constexpr keepalive_cutoff = keepalive_period * 5;
-	static std::chrono::minutes constexpr wallet_backup_interval = std::chrono::minutes (5);
-	/** Default outbound traffic shaping is 10MB/s */
-	size_t bandwidth_limit{ 10 * 1024 * 1024 };
-	/** By default, allow bursts of 15MB/s (not sustainable) */
-	double bandwidth_limit_burst_ratio{ 3. };
-	std::chrono::milliseconds conf_height_processor_batch_min_time{ 50 };
-	bool backup_before_upgrade{ false };
-	std::chrono::seconds work_watcher_period{ std::chrono::seconds (5) };
-	double max_work_generate_multiplier{ 64. };
-	uint32_t max_queued_requests{ 512 };
-	nano::rocksdb_config rocksdb_config;
-	nano::lmdb_config lmdb_config;
-	nano::frontiers_confirmation_mode frontiers_confirmation{ nano::frontiers_confirmation_mode::automatic };
-	std::string serialize_frontiers_confirmation (nano::frontiers_confirmation_mode) const;
-	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);
-	/** Entry is ignored if it cannot be parsed as a valid address:port */
-	void deserialize_address (std::string const &, std::vector<std::pair<std::string, uint16_t>> &) const;
-
-	static unsigned json_version ()
-	{
-		return 18;
-	}
-};
-
 class node_flags final
 {
 public:
@@ -148,5 +63,91 @@ public:
 	size_t block_processor_verification_size{ 0 };
 	size_t inactive_votes_cache_size{ 16 * 1024 };
 	size_t vote_processor_capacity{ 144 * 1024 };
+};
+
+/**
+ * Node configuration
+ */
+class node_config
+{
+public:
+	node_config ();
+	nano::error serialize_json (nano::jsonconfig &) const;
+	nano::error deserialize_json (bool &, nano::jsonconfig &);
+	nano::error serialize_toml (nano::tomlconfig &) const;
+	nano::error deserialize_toml (nano::tomlconfig &);
+	bool upgrade_json (unsigned, nano::jsonconfig &);
+	nano::account random_representative () const;
+	nano::environment_constants constants;
+	nano::node_flags flags;
+	uint16_t peering_port{ 0 };
+	boost::filesystem::path path;
+	nano::logging logging;
+	std::vector<std::pair<std::string, uint16_t>> work_peers;
+	std::vector<std::pair<std::string, uint16_t>> secondary_work_peers{ { "127.0.0.1", 8076 } }; /* Default of nano-pow-server */
+	std::vector<std::string> preconfigured_peers;
+	std::vector<nano::account> preconfigured_representatives;
+	unsigned bootstrap_fraction_numerator{ 1 };
+	nano::amount receive_minimum{ nano::xrb_ratio };
+	nano::amount vote_minimum{ nano::Gxrb_ratio };
+	std::chrono::milliseconds vote_generator_delay{ std::chrono::milliseconds (100) };
+	unsigned vote_generator_threshold{ 3 };
+	nano::amount online_weight_minimum{ 60000 * nano::Gxrb_ratio };
+	unsigned online_weight_quorum{ 50 };
+	unsigned password_fanout{ 1024 };
+	unsigned io_threads{ std::max<unsigned> (4, std::thread::hardware_concurrency ()) };
+	unsigned network_threads{ std::max<unsigned> (4, std::thread::hardware_concurrency ()) };
+	unsigned work_threads{ std::max<unsigned> (4, std::thread::hardware_concurrency ()) };
+	/* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
+	unsigned signature_checker_threads{ std::thread::hardware_concurrency () / 2 };
+	bool enable_voting{ false };
+	unsigned bootstrap_connections{ 4 };
+	unsigned bootstrap_connections_max{ 64 };
+	unsigned bootstrap_initiator_threads{ 1 };
+	nano::websocket::config websocket_config;
+	nano::diagnostics_config diagnostics_config;
+	size_t confirmation_history_size{ 2048 };
+	std::string callback_address;
+	uint16_t callback_port{ 0 };
+	std::string callback_target;
+	int deprecated_lmdb_max_dbs{ 128 };
+	bool allow_local_peers{ !(constants.network.is_live_network () || constants.network.is_test_network ()) }; // disable by default for live network
+	nano::stat_config stat_config;
+	nano::ipc::ipc_config ipc_config;
+	std::string external_address;
+	uint16_t external_port{ 0 };
+	std::chrono::milliseconds block_processor_batch_max_time{ constants.network.is_dev_network () ? std::chrono::milliseconds (500) : std::chrono::milliseconds (5000) };
+	std::chrono::seconds unchecked_cutoff_time{ std::chrono::seconds (4 * 60 * 60) }; // 4 hours
+	/** Timeout for initiated async operations */
+	std::chrono::seconds tcp_io_timeout{ (constants.network.is_dev_network () && !is_sanitizer_build) ? std::chrono::seconds (5) : std::chrono::seconds (15) };
+	std::chrono::nanoseconds pow_sleep_interval{ 0 };
+	size_t active_elections_size{ 50000 };
+	/** Default maximum incoming TCP connections, including realtime network & bootstrap */
+	unsigned tcp_incoming_connections_max{ 1024 };
+	bool use_memory_pools{ true };
+	static std::chrono::seconds constexpr keepalive_period = std::chrono::seconds (60);
+	static std::chrono::seconds constexpr keepalive_cutoff = keepalive_period * 5;
+	static std::chrono::minutes constexpr wallet_backup_interval = std::chrono::minutes (5);
+	/** Default outbound traffic shaping is 10MB/s */
+	size_t bandwidth_limit{ 10 * 1024 * 1024 };
+	/** By default, allow bursts of 15MB/s (not sustainable) */
+	double bandwidth_limit_burst_ratio{ 3. };
+	std::chrono::milliseconds conf_height_processor_batch_min_time{ 50 };
+	bool backup_before_upgrade{ false };
+	std::chrono::seconds work_watcher_period{ std::chrono::seconds (5) };
+	double max_work_generate_multiplier{ 64. };
+	uint32_t max_queued_requests{ 512 };
+	nano::rocksdb_config rocksdb_config;
+	nano::lmdb_config lmdb_config;
+	nano::frontiers_confirmation_mode frontiers_confirmation{ nano::frontiers_confirmation_mode::automatic };
+	std::string serialize_frontiers_confirmation (nano::frontiers_confirmation_mode) const;
+	nano::frontiers_confirmation_mode deserialize_frontiers_confirmation (std::string const &);
+	/** Entry is ignored if it cannot be parsed as a valid address:port */
+	void deserialize_address (std::string const &, std::vector<std::pair<std::string, uint16_t>> &) const;
+
+	static unsigned json_version ()
+	{
+		return 18;
+	}
 };
 }

@@ -60,7 +60,7 @@ private:
 	history;
 	// clang-format on
 
-	size_t const max_size{ nano::network_params{}.voting.max_cache };
+	size_t const max_size{ nano::environment_constants{}.voting.max_cache };
 	void clean ();
 	std::vector<std::shared_ptr<nano::vote>> votes (nano::root const & root_a) const;
 	mutable std::mutex mutex;
@@ -91,7 +91,7 @@ private:
 	mutable std::mutex mutex;
 	nano::condition_variable condition;
 	std::deque<std::pair<nano::root, nano::block_hash>> hashes;
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	bool stopped{ false };
 	bool started{ false };
 	std::thread thread;

@@ -94,7 +94,7 @@ private:
 	void collect_unconfirmed_receive_and_sources_for_account (uint64_t, uint64_t, nano::block_hash const &, nano::account const &, nano::read_transaction const &, std::vector<receive_source_pair> &, std::vector<nano::block_hash> &, std::vector<nano::block_hash> &);
 	void prepare_iterated_blocks_for_cementing (preparation_data &);
 
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	nano::ledger & ledger;
 	nano::write_database_queue & write_database_queue;
 	std::chrono::milliseconds batch_separate_pending_min_time;

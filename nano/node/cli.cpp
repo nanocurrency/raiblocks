@@ -108,74 +108,6 @@ void nano::add_node_flag_options (boost::program_options::options_description & 
 	// clang-format on
 }
 
-std::error_code nano::update_flags (nano::node_flags & flags_a, boost::program_options::variables_map const & vm)
-{
-	std::error_code ec;
-	flags_a.disable_backup = (vm.count ("disable_backup") > 0);
-	flags_a.disable_lazy_bootstrap = (vm.count ("disable_lazy_bootstrap") > 0);
-	flags_a.disable_legacy_bootstrap = (vm.count ("disable_legacy_bootstrap") > 0);
-	flags_a.disable_wallet_bootstrap = (vm.count ("disable_wallet_bootstrap") > 0);
-	if (!flags_a.inactive_node)
-	{
-		flags_a.disable_bootstrap_listener = (vm.count ("disable_bootstrap_listener") > 0);
-		flags_a.disable_tcp_realtime = (vm.count ("disable_tcp_realtime") > 0);
-	}
-	flags_a.disable_providing_telemetry_metrics = (vm.count ("disable_providing_telemetry_metrics") > 0);
-	if ((vm.count ("disable_udp") > 0) && (vm.count ("enable_udp") > 0))
-	{
-		ec = nano::error_cli::ambiguous_udp_options;
-	}
-	flags_a.disable_udp = (vm.count ("enable_udp") == 0);
-	if (flags_a.disable_tcp_realtime && flags_a.disable_udp)
-	{
-		ec = nano::error_cli::disable_all_network;
-	}
-	flags_a.disable_unchecked_cleanup = (vm.count ("disable_unchecked_cleanup") > 0);
-	flags_a.disable_unchecked_drop = (vm.count ("disable_unchecked_drop") > 0);
-	flags_a.disable_block_processor_unchecked_deletion = (vm.count ("disable_block_processor_unchecked_deletion") > 0);
-	flags_a.allow_bootstrap_peers_duplicates = (vm.count ("allow_bootstrap_peers_duplicates") > 0);
-	flags_a.fast_bootstrap = (vm.count ("fast_bootstrap") > 0);
-	if (flags_a.fast_bootstrap)
-	{
-		flags_a.disable_block_processor_unchecked_deletion = true;
-		flags_a.block_processor_batch_size = 256 * 1024;
-		flags_a.block_processor_full_size = 1024 * 1024;
-		flags_a.block_processor_verification_size = std::numeric_limits<size_t>::max ();
-	}
-	auto block_processor_batch_size_it = vm.find ("block_processor_batch_size");
-	if (block_processor_batch_size_it != vm.end ())
-	{
-		flags_a.block_processor_batch_size = block_processor_batch_size_it->second.as<size_t> ();
-	}
-	auto block_processor_full_size_it = vm.find ("block_processor_full_size");
-	if (block_processor_full_size_it != vm.end ())
-	{
-		flags_a.block_processor_full_size = block_processor_full_size_it->second.as<size_t> ();
-	}
-	auto block_processor_verification_size_it = vm.find ("block_processor_verification_size");
-	if (block_processor_verification_size_it != vm.end ())
-	{
-		flags_a.block_processor_verification_size = block_processor_verification_size_it->second.as<size_t> ();
-	}
-	auto inactive_votes_cache_size_it = vm.find ("inactive_votes_cache_size");
-	if (inactive_votes_cache_size_it != vm.end ())
-	{
-		flags_a.inactive_votes_cache_size = inactive_votes_cache_size_it->second.as<size_t> ();
-	}
-	auto vote_processor_capacity_it = vm.find ("vote_processor_capacity");
-	if (vote_processor_capacity_it != vm.end ())
-	{
-		flags_a.vote_processor_capacity = vote_processor_capacity_it->second.as<size_t> ();
-	}
-	// Config overriding
-	auto config (vm.find ("config"));
-	if (config != vm.end ())
-	{
-		flags_a.config_overrides = nano::config_overrides (config->second.as<std::vector<nano::config_key_value_pair>> ());
-	}
-	return ec;
-}
-
 namespace
 {
 void database_write_lock_error (std::error_code & ec)
@@ -184,15 +116,16 @@ void database_write_lock_error (std::error_code & ec)
 	ec = nano::error_cli::database_write_error;
 }
 
-bool copy_database (boost::filesystem::path const & data_path, boost::program_options::variables_map const & vm, boost::filesystem::path const & output_path, std::error_code & ec)
+bool copy_database (nano::environment & env_a, boost::program_options::variables_map const & vm, boost::filesystem::path const & output_path, std::error_code & ec)
 {
 	bool success = false;
 	bool needs_to_write = vm.count ("unchecked_clear") || vm.count ("clear_send_ids") || vm.count ("online_weight_clear") || vm.count ("peer_clear") || vm.count ("confirmation_height_clear") || vm.count ("rebuild_database");
 
-	auto node_flags = nano::inactive_node_flag_defaults ();
-	node_flags.read_only = !needs_to_write;
-	nano::update_flags (node_flags, vm);
-	nano::inactive_node node (data_path, node_flags);
+	nano::node_flags flags;
+	auto error{ env_a.apply_overrides (flags, nano::environment::purpose::inactive, vm) };
+	debug_assert (!error);
+	flags.read_only = !needs_to_write;
+	nano::inactive_node node (env_a, flags);
 	if (!node.node->init_error ())
 	{
 		if (vm.count ("unchecked_clear"))
@@ -240,6 +173,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	std::error_code ec;
 	boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
 
+	nano::environment env{ data_path };
 	if (vm.count ("account_create"))
 	{
 		if (vm.count ("wallet") == 1)
@@ -252,7 +186,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				{
 					password = vm["password"].as<std::string> ();
 				}
-				auto inactive_node = nano::default_inactive_node (data_path, vm);
+				auto inactive_node = nano::default_inactive_node (env, vm);
 				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
@@ -346,7 +280,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				}
 				std::cout << "This may take a while..." << std::endl;
 
-				bool success = copy_database (data_path, vm, vacuum_path, ec);
+				bool success = copy_database (env, vm, vacuum_path, ec);
 				if (success)
 				{
 					// Note that these throw on failure
@@ -408,7 +342,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				std::cout << "Database snapshot of " << source_path << " to " << snapshot_path << " in progress" << std::endl;
 				std::cout << "This may take a while..." << std::endl;
 
-				bool success = copy_database (data_path, vm, snapshot_path, ec);
+				bool success = copy_database (env, vm, snapshot_path, ec);
 				if (success)
 				{
 					std::cout << "Snapshot completed, This can be found at " << snapshot_path << std::endl;
@@ -434,11 +368,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("unchecked_clear"))
 	{
-		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
-		auto node_flags = nano::inactive_node_flag_defaults ();
-		node_flags.read_only = false;
-		nano::update_flags (node_flags, vm);
-		nano::inactive_node node (data_path, node_flags);
+		nano::node_flags flags;
+		auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive, vm) };
+		flags.read_only = false;
+		nano::inactive_node node (env, flags);
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
@@ -452,11 +385,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("clear_send_ids"))
 	{
-		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
-		auto node_flags = nano::inactive_node_flag_defaults ();
-		node_flags.read_only = false;
-		nano::update_flags (node_flags, vm);
-		nano::inactive_node node (data_path, node_flags);
+		nano::node_flags flags;
+		auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive, vm) };
+		flags.read_only = false;
+		nano::inactive_node node (env, flags);
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->wallets.tx_begin_write ());
@@ -470,11 +402,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("online_weight_clear"))
 	{
-		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
-		auto node_flags = nano::inactive_node_flag_defaults ();
-		node_flags.read_only = false;
-		nano::update_flags (node_flags, vm);
-		nano::inactive_node node (data_path, node_flags);
+		nano::node_flags flags;
+		auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive, vm) };
+		flags.read_only = false;
+		nano::inactive_node node (env, flags);
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
@@ -488,11 +419,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("peer_clear"))
 	{
-		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
-		auto node_flags = nano::inactive_node_flag_defaults ();
-		node_flags.read_only = false;
-		nano::update_flags (node_flags, vm);
-		nano::inactive_node node (data_path, node_flags);
+		nano::node_flags flags;
+		auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive, vm) };
+		flags.read_only = false;
+		nano::inactive_node node (env, flags);
 		if (!node.node->init_error ())
 		{
 			auto transaction (node.node->store.tx_begin_write ());
@@ -506,11 +436,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("confirmation_height_clear"))
 	{
-		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : nano::working_path ();
-		auto node_flags = nano::inactive_node_flag_defaults ();
-		node_flags.read_only = false;
-		nano::update_flags (node_flags, vm);
-		nano::inactive_node node (data_path, node_flags);
+		nano::node_flags flags;
+		auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive, vm) };
+		flags.read_only = false;
+		nano::inactive_node node (env, flags);
 		if (!node.node->init_error ())
 		{
 			auto account_it = vm.find ("account");
@@ -526,10 +455,10 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					{
 						auto transaction (node.node->store.tx_begin_write ());
 						auto conf_height_reset_num = 0;
-						if (account == node.node->network_params.ledger.genesis_account)
+						if (account == node.node->env.constants.ledger.genesis_account)
 						{
 							conf_height_reset_num = 1;
-							node.node->store.confirmation_height_put (transaction, account, { confirmation_height_info.height, node.node->network_params.ledger.genesis_block });
+							node.node->store.confirmation_height_put (transaction, account, { confirmation_height_info.height, node.node->env.constants.ledger.genesis_block });
 						}
 						else
 						{
@@ -569,7 +498,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		if (type == "node")
 		{
 			valid_type = true;
-			nano::daemon_config config (data_path);
+			nano::daemon_config config;
 			config.serialize_toml (toml);
 		}
 		else if (type == "rpc")
@@ -604,7 +533,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("diagnostics"))
 	{
-		auto inactive_node = nano::default_inactive_node (data_path, vm);
+		auto inactive_node = nano::default_inactive_node (env, vm);
 		std::cout << "Testing hash function" << std::endl;
 		nano::raw_key key;
 		key.data.clear ();
@@ -675,7 +604,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				{
 					password = vm["password"].as<std::string> ();
 				}
-				auto inactive_node = nano::default_inactive_node (data_path, vm);
+				auto inactive_node = nano::default_inactive_node (env, vm);
 				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
@@ -729,7 +658,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 				{
 					password = vm["password"].as<std::string> ();
 				}
-				auto inactive_node = nano::default_inactive_node (data_path, vm);
+				auto inactive_node = nano::default_inactive_node (env, vm);
 				auto wallet (inactive_node->node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
@@ -811,7 +740,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 		}
 		if (!ec)
 		{
-			auto inactive_node = nano::default_inactive_node (data_path, vm);
+			auto inactive_node = nano::default_inactive_node (env, vm);
 			auto wallet_key = nano::random_wallet_id ();
 			auto wallet (inactive_node->node->wallets.create (wallet_key));
 			if (wallet != nullptr)
@@ -853,7 +782,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			nano::wallet_id wallet_id;
 			if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
 			{
-				auto inactive_node = nano::default_inactive_node (data_path, vm);
+				auto inactive_node = nano::default_inactive_node (env, vm);
 				auto node = inactive_node->node;
 				auto existing (inactive_node->node->wallets.items.find (wallet_id));
 				if (existing != inactive_node->node->wallets.items.end ())
@@ -909,7 +838,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			nano::wallet_id wallet_id;
 			if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
 			{
-				auto inactive_node = nano::default_inactive_node (data_path, vm);
+				auto inactive_node = nano::default_inactive_node (env, vm);
 				auto node = inactive_node->node;
 				if (node->wallets.items.find (wallet_id) != node->wallets.items.end ())
 				{
@@ -959,7 +888,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					nano::wallet_id wallet_id;
 					if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
 					{
-						auto inactive_node = nano::default_inactive_node (data_path, vm);
+						auto inactive_node = nano::default_inactive_node (env, vm);
 						auto node = inactive_node->node;
 						auto existing (node->wallets.items.find (wallet_id));
 						if (existing != node->wallets.items.end ())
@@ -1047,7 +976,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("wallet_list"))
 	{
-		auto inactive_node = nano::default_inactive_node (data_path, vm);
+		auto inactive_node = nano::default_inactive_node (env, vm);
 		auto node = inactive_node->node;
 		for (auto i (node->wallets.items.begin ()), n (node->wallets.items.end ()); i != n; ++i)
 		{
@@ -1063,7 +992,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	{
 		if (vm.count ("wallet") == 1 && vm.count ("account") == 1)
 		{
-			auto inactive_node = nano::default_inactive_node (data_path, vm);
+			auto inactive_node = nano::default_inactive_node (env, vm);
 			auto node = inactive_node->node;
 			nano::wallet_id wallet_id;
 			if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
@@ -1117,7 +1046,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 			nano::wallet_id wallet_id;
 			if (!wallet_id.decode_hex (vm["wallet"].as<std::string> ()))
 			{
-				auto inactive_node = nano::default_inactive_node (data_path, vm);
+				auto inactive_node = nano::default_inactive_node (env, vm);
 				auto node = inactive_node->node;
 				auto wallet (node->wallets.items.find (wallet_id));
 				if (wallet != node->wallets.items.end ())
@@ -1156,7 +1085,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 					nano::account account;
 					if (!account.decode_account (vm["account"].as<std::string> ()))
 					{
-						auto inactive_node = nano::default_inactive_node (data_path, vm);
+						auto inactive_node = nano::default_inactive_node (env, vm);
 						auto node = inactive_node->node;
 						auto wallet (node->wallets.items.find (wallet_id));
 						if (wallet != node->wallets.items.end ())
@@ -1196,7 +1125,7 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	}
 	else if (vm.count ("vote_dump") == 1)
 	{
-		auto inactive_node = nano::default_inactive_node (data_path, vm);
+		auto inactive_node = nano::default_inactive_node (env, vm);
 		auto node = inactive_node->node;
 		auto transaction (node->store.tx_begin_read ());
 		for (auto i (node->store.vote_begin (transaction)), n (node->store.vote_end ()); i != n; ++i)
@@ -1213,11 +1142,11 @@ std::error_code nano::handle_node_options (boost::program_options::variables_map
 	return ec;
 }
 
-std::unique_ptr<nano::inactive_node> nano::default_inactive_node (boost::filesystem::path const & path_a, boost::program_options::variables_map const & vm_a)
+std::unique_ptr<nano::inactive_node> nano::default_inactive_node (nano::environment & env_a, boost::program_options::variables_map const & vm_a)
 {
-	auto node_flags = nano::inactive_node_flag_defaults ();
-	nano::update_flags (node_flags, vm_a);
-	return std::make_unique<nano::inactive_node> (path_a, node_flags);
+	nano::node_flags flags;
+	auto error{ env_a.apply_overrides (flags, nano::environment::purpose::inactive, vm_a) };
+	return std::make_unique<nano::inactive_node> (env_a, flags);
 }
 
 namespace
@@ -1229,13 +1158,13 @@ void reset_confirmation_heights (nano::block_store & store)
 	store.confirmation_height_clear (transaction);
 
 	// Then make sure the confirmation height of the genesis account open block is 1
-	nano::network_params network_params;
-	store.confirmation_height_put (transaction, network_params.ledger.genesis_account, { 1, network_params.ledger.genesis_hash });
+	nano::environment_constants constants;
+	store.confirmation_height_put (transaction, constants.ledger.genesis_account, { 1, constants.ledger.genesis_hash });
 }
 
 bool is_using_rocksdb (boost::filesystem::path const & data_path, std::error_code & ec)
 {
-	nano::daemon_config config (data_path);
+	nano::daemon_config config;
 	auto error = nano::read_node_config_toml (data_path, config);
 	if (!error)
 	{

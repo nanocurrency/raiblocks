@@ -19,7 +19,7 @@ int main (int argc, char ** argv)
 	nano_qt::eventloop_processor processor;
 	const uint16_t count (16);
 	nano::system system (count);
-	nano::thread_runner runner (system.io_ctx, system.nodes[0]->config.io_threads);
+	nano::thread_runner runner (system.env.ctx, system.nodes[0]->config.io_threads);
 	std::unique_ptr<QTabWidget> client_tabs (new QTabWidget);
 	std::vector<std::unique_ptr<nano_qt::wallet>> guis;
 	for (auto i (0); i < count; ++i)

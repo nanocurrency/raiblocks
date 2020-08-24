@@ -16,7 +16,6 @@ class daemon_config
 {
 public:
 	daemon_config () = default;
-	daemon_config (boost::filesystem::path const & data_path);
 	nano::error deserialize_json (bool &, nano::jsonconfig &);
 	nano::error serialize_json (nano::jsonconfig &);
 	nano::error deserialize_toml (nano::tomlconfig &);
@@ -27,7 +26,6 @@ public:
 	bool opencl_enable{ false };
 	nano::opencl_config opencl;
 	nano::node_pow_server_config pow_server;
-	boost::filesystem::path data_path;
 	unsigned json_version () const
 	{
 		return 2;

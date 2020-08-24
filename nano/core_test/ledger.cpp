@@ -528,7 +528,7 @@ TEST (system, DISABLED_generate_send_existing)
 {
 	nano::system system (1);
 	auto & node1 (*system.nodes[0]);
-	nano::thread_runner runner (system.io_ctx, node1.config.io_threads);
+	nano::thread_runner runner (system.env.ctx, node1.config.io_threads);
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	nano::keypair stake_preserver;
 	auto send_block (system.wallet (0)->send_action (nano::genesis_account, stake_preserver.pub, nano::genesis_amount / 3 * 2, true));
@@ -575,7 +575,7 @@ TEST (system, DISABLED_generate_send_new)
 {
 	nano::system system (1);
 	auto & node1 (*system.nodes[0]);
-	nano::thread_runner runner (system.io_ctx, node1.config.io_threads);
+	nano::thread_runner runner (system.env.ctx, node1.config.io_threads);
 	system.wallet (0)->insert_adhoc (nano::dev_genesis_key.prv);
 	{
 		auto transaction (node1.store.tx_begin_read ());
@@ -750,7 +750,7 @@ TEST (ledger, double_receive)
 TEST (votes, check_signature)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.online_weight_minimum = std::numeric_limits<nano::uint128_t>::max ();
 	auto & node1 = *system.add_node (node_config);
 	nano::genesis genesis;
@@ -768,10 +768,10 @@ TEST (votes, check_signature)
 	}
 	auto vote1 (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 1, send1));
 	vote1->signature.bytes[0] ^= 1;
-	ASSERT_EQ (nano::vote_code::invalid, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, nano::endpoint (boost::asio::ip::address_v6 (), 0), node1.network_params.protocol.protocol_version)));
+	ASSERT_EQ (nano::vote_code::invalid, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, nano::endpoint (boost::asio::ip::address_v6 (), 0), node1.env.constants.protocol.protocol_version)));
 	vote1->signature.bytes[0] ^= 1;
-	ASSERT_EQ (nano::vote_code::vote, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, nano::endpoint (boost::asio::ip::address_v6 (), 0), node1.network_params.protocol.protocol_version)));
-	ASSERT_EQ (nano::vote_code::replay, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, nano::endpoint (boost::asio::ip::address_v6 (), 0), node1.network_params.protocol.protocol_version)));
+	ASSERT_EQ (nano::vote_code::vote, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, nano::endpoint (boost::asio::ip::address_v6 (), 0), node1.env.constants.protocol.protocol_version)));
+	ASSERT_EQ (nano::vote_code::replay, node1.vote_processor.vote_blocking (vote1, std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, nano::endpoint (boost::asio::ip::address_v6 (), 0), node1.env.constants.protocol.protocol_version)));
 }
 
 TEST (votes, add_one)
@@ -835,7 +835,7 @@ TEST (votes, add_two)
 TEST (votes, add_existing)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.online_weight_minimum = std::numeric_limits<nano::uint128_t>::max ();
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node1 = *system.add_node (node_config);
@@ -894,7 +894,7 @@ TEST (votes, add_old)
 	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (transaction, *send1).code);
 	auto election1 = node1.active.insert (send1);
 	auto vote1 (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 2, send1));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.env.constants.protocol.protocol_version));
 	node1.vote_processor.vote_blocking (vote1, channel);
 	nano::keypair key2;
 	auto send2 (std::make_shared<nano::send_block> (genesis.hash (), key2.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, 0));
@@ -934,7 +934,7 @@ TEST (votes, add_old_different_account)
 	ASSERT_EQ (1, election1->last_votes_size ());
 	ASSERT_EQ (1, election2->last_votes_size ());
 	auto vote1 (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 2, send1));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.env.constants.protocol.protocol_version));
 	auto vote_result1 (node1.vote_processor.vote_blocking (vote1, channel));
 	ASSERT_EQ (nano::vote_code::vote, vote_result1);
 	ASSERT_EQ (2, election1->last_votes_size ());
@@ -968,7 +968,7 @@ TEST (votes, add_cooldown)
 	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (transaction, *send1).code);
 	auto election1 = node1.active.insert (send1);
 	auto vote1 (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 1, send1));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node1.network.udp_channels, node1.network.endpoint (), node1.env.constants.protocol.protocol_version));
 	node1.vote_processor.vote_blocking (vote1, channel);
 	nano::keypair key2;
 	auto send2 (std::make_shared<nano::send_block> (genesis.hash (), key2.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, 0));
@@ -2827,7 +2827,7 @@ TEST (ledger, unchecked_epoch)
 TEST (ledger, unchecked_epoch_invalid)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto & node1 (*system.add_node (node_config));
 	nano::genesis genesis;
@@ -3008,7 +3008,7 @@ TEST (ledger, zero_rep)
 	              .balance (nano::genesis_amount)
 	              .link (0)
 	              .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	              .work (*system.work.generate (genesis.hash ()))
+	              .work (*system.env.work.generate (genesis.hash ()))
 	              .build ();
 	auto transaction (node1.store.tx_begin_write ());
 	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (transaction, *block1).code);
@@ -3021,7 +3021,7 @@ TEST (ledger, zero_rep)
 	              .balance (nano::genesis_amount)
 	              .link (0)
 	              .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	              .work (*system.work.generate (block1->hash ()))
+	              .work (*system.env.work.generate (block1->hash ()))
 	              .build ();
 	ASSERT_EQ (nano::process_result::progress, node1.ledger.process (transaction, *block2).code);
 	ASSERT_EQ (nano::genesis_amount, node1.ledger.cache.rep_weights.representation_get (nano::dev_genesis_key.pub));
@@ -3137,10 +3137,10 @@ TEST (ledger, epoch_2_started_flag)
 	auto epoch1 = system.upgrade_genesis_epoch (node2, nano::epoch::epoch_1);
 	ASSERT_NE (nullptr, epoch1);
 	ASSERT_FALSE (node2.ledger.cache.epoch_2_started.load ());
-	nano::state_block send (nano::dev_genesis_key.pub, epoch1->hash (), nano::dev_genesis_key.pub, nano::genesis_amount - 1, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (epoch1->hash ()));
+	nano::state_block send (nano::dev_genesis_key.pub, epoch1->hash (), nano::dev_genesis_key.pub, nano::genesis_amount - 1, key.pub, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (epoch1->hash ()));
 	ASSERT_EQ (nano::process_result::progress, node2.process (send).code);
 	ASSERT_FALSE (node2.ledger.cache.epoch_2_started.load ());
-	nano::state_block epoch2 (key.pub, 0, 0, 0, node2.ledger.epoch_link (nano::epoch::epoch_2), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (key.pub));
+	nano::state_block epoch2 (key.pub, 0, 0, 0, node2.ledger.epoch_link (nano::epoch::epoch_2), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (key.pub));
 	ASSERT_EQ (nano::process_result::progress, node2.process (epoch2).code);
 	ASSERT_TRUE (node2.ledger.cache.epoch_2_started.load ());
 

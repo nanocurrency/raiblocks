@@ -30,11 +30,11 @@ void nano::bootstrap_attempt_lazy::lazy_start (nano::hash_or_account const & has
 {
 	nano::unique_lock<std::mutex> lock (mutex);
 	// Add start blocks, limit 1024 (4k with disabled legacy bootstrap)
-	size_t max_keys (node->flags.disable_legacy_bootstrap ? 4 * 1024 : 1024);
+	size_t max_keys (node->config.flags.disable_legacy_bootstrap ? 4 * 1024 : 1024);
 	if (lazy_keys.size () < max_keys && lazy_keys.find (hash_or_account_a) == lazy_keys.end () && !lazy_blocks_processed (hash_or_account_a))
 	{
 		lazy_keys.insert (hash_or_account_a);
-		lazy_pulls.emplace_back (hash_or_account_a, confirmed ? std::numeric_limits<unsigned>::max () : node->network_params.bootstrap.lazy_retry_limit);
+		lazy_pulls.emplace_back (hash_or_account_a, confirmed ? std::numeric_limits<unsigned>::max () : node->env.constants.bootstrap.lazy_retry_limit);
 		lock.unlock ();
 		condition.notify_all ();
 	}
@@ -65,13 +65,13 @@ void nano::bootstrap_attempt_lazy::lazy_requeue (nano::block_hash const & hash_a
 	{
 		lazy_blocks_erase (hash_a);
 		lock.unlock ();
-		node->bootstrap_initiator.connections->requeue_pull (nano::pull_info (hash_a, hash_a, previous_a, incremental_id, static_cast<nano::pull_info::count_t> (1), confirmed_a ? std::numeric_limits<unsigned>::max () : node->network_params.bootstrap.lazy_destinations_retry_limit));
+		node->bootstrap_initiator.connections->requeue_pull (nano::pull_info (hash_a, hash_a, previous_a, incremental_id, static_cast<nano::pull_info::count_t> (1), confirmed_a ? std::numeric_limits<unsigned>::max () : node->env.constants.bootstrap.lazy_destinations_retry_limit));
 	}
 }
 
 uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 {
-	auto result (node->network_params.bootstrap.lazy_max_pull_blocks);
+	auto result (node->env.constants.bootstrap.lazy_max_pull_blocks);
 	if (total_blocks > nano::bootstrap_limits::lazy_batch_pull_count_resize_blocks_limit && lazy_blocks_count != 0)
 	{
 		double lazy_blocks_ratio (total_blocks / lazy_blocks_count);
@@ -81,8 +81,8 @@ uint32_t nano::bootstrap_attempt_lazy::lazy_batch_size ()
 			double lazy_blocks_factor (std::pow (lazy_blocks_ratio / nano::bootstrap_limits::lazy_batch_pull_count_resize_ratio, 3.0));
 			// Decreasing total block count weight as less important (sqrt)
 			double total_blocks_factor (std::sqrt (total_blocks / nano::bootstrap_limits::lazy_batch_pull_count_resize_blocks_limit));
-			uint32_t batch_count_min (node->network_params.bootstrap.lazy_max_pull_blocks / (lazy_blocks_factor * total_blocks_factor));
-			result = std::max (node->network_params.bootstrap.lazy_min_pull_blocks, batch_count_min);
+			uint32_t batch_count_min (node->env.constants.bootstrap.lazy_max_pull_blocks / (lazy_blocks_factor * total_blocks_factor));
+			result = std::max (node->env.constants.bootstrap.lazy_min_pull_blocks, batch_count_min);
 		}
 	}
 	return result;
@@ -93,7 +93,7 @@ void nano::bootstrap_attempt_lazy::lazy_pull_flush (nano::unique_lock<std::mutex
 	static size_t const max_pulls (nano::bootstrap_limits::bootstrap_connection_scale_target_blocks * 3);
 	if (pulling < max_pulls)
 	{
-		debug_assert (node->network_params.bootstrap.lazy_max_pull_blocks <= std::numeric_limits<nano::pull_info::count_t>::max ());
+		debug_assert (node->env.constants.bootstrap.lazy_max_pull_blocks <= std::numeric_limits<nano::pull_info::count_t>::max ());
 		nano::pull_info::count_t batch_count (lazy_batch_size ());
 		uint64_t read_count (0);
 		size_t count (0);
@@ -167,12 +167,12 @@ bool nano::bootstrap_attempt_lazy::lazy_has_expired () const
 {
 	bool result (false);
 	// Max 30 minutes run with enabled legacy bootstrap
-	static std::chrono::minutes const max_lazy_time (node->flags.disable_legacy_bootstrap ? 7 * 24 * 60 : 30);
+	static std::chrono::minutes const max_lazy_time (node->config.flags.disable_legacy_bootstrap ? 7 * 24 * 60 : 30);
 	if (std::chrono::steady_clock::now () - lazy_start_time >= max_lazy_time)
 	{
 		result = true;
 	}
-	else if (!node->flags.disable_legacy_bootstrap && lazy_blocks_count > nano::bootstrap_limits::lazy_blocks_restart_limit)
+	else if (!node->config.flags.disable_legacy_bootstrap && lazy_blocks_count > nano::bootstrap_limits::lazy_blocks_restart_limit)
 	{
 		result = true;
 	}
@@ -182,7 +182,7 @@ bool nano::bootstrap_attempt_lazy::lazy_has_expired () const
 void nano::bootstrap_attempt_lazy::run ()
 {
 	debug_assert (started);
-	debug_assert (!node->flags.disable_lazy_bootstrap);
+	debug_assert (!node->config.flags.disable_lazy_bootstrap);
 	node->bootstrap_initiator.connections->populate_connections (false);
 	lazy_start_time = std::chrono::steady_clock::now ();
 	nano::unique_lock<std::mutex> lock (mutex);
@@ -251,7 +251,7 @@ bool nano::bootstrap_attempt_lazy::process_block_lazy (std::shared_ptr<nano::blo
 	if (!lazy_blocks_processed (hash))
 	{
 		// Search for new dependencies
-		if (!block_a->source ().is_zero () && !node->ledger.block_exists (block_a->source ()) && block_a->source () != node->network_params.ledger.genesis_account)
+		if (!block_a->source ().is_zero () && !node->ledger.block_exists (block_a->source ()) && block_a->source () != node->env.constants.ledger.genesis_account)
 		{
 			lazy_add (block_a->source (), retry_limit);
 		}
@@ -368,7 +368,7 @@ void nano::bootstrap_attempt_lazy::lazy_block_state_backlog_check (std::shared_p
 		// Assumption for other legacy block types
 		else if (lazy_undefined_links.find (next_block.link) == lazy_undefined_links.end ())
 		{
-			lazy_add (next_block.link, node->network_params.bootstrap.lazy_retry_limit); // Head is not confirmed. It can be account or hash or non-existing
+			lazy_add (next_block.link, node->env.constants.bootstrap.lazy_retry_limit); // Head is not confirmed. It can be account or hash or non-existing
 			lazy_undefined_links.insert (next_block.link);
 		}
 		lazy_state_backlog.erase (find_state);
@@ -411,7 +411,7 @@ void nano::bootstrap_attempt_lazy::lazy_backlog_cleanup ()
 void nano::bootstrap_attempt_lazy::lazy_destinations_increment (nano::account const & destination_a)
 {
 	// Enabled only if legacy bootstrap is not available. Legacy bootstrap is a more effective way to receive all existing destinations
-	if (node->flags.disable_legacy_bootstrap)
+	if (node->config.flags.disable_legacy_bootstrap)
 	{
 		// Update accounts counter for send blocks
 		auto existing (lazy_destinations.get<account_tag> ().find (destination_a));
@@ -435,7 +435,7 @@ void nano::bootstrap_attempt_lazy::lazy_destinations_flush ()
 	size_t count (0);
 	for (auto it (lazy_destinations.get<count_tag> ().begin ()), end (lazy_destinations.get<count_tag> ().end ()); it != end && count < nano::bootstrap_limits::lazy_destinations_request_limit && !stopped;)
 	{
-		lazy_add (it->account, node->network_params.bootstrap.lazy_destinations_retry_limit);
+		lazy_add (it->account, node->env.constants.bootstrap.lazy_destinations_retry_limit);
 		it = lazy_destinations.get<count_tag> ().erase (it);
 		++count;
 	}
@@ -565,7 +565,7 @@ bool nano::bootstrap_attempt_wallet::wallet_finished ()
 void nano::bootstrap_attempt_wallet::run ()
 {
 	debug_assert (started);
-	debug_assert (!node->flags.disable_wallet_bootstrap);
+	debug_assert (!node->config.flags.disable_wallet_bootstrap);
 	node->bootstrap_initiator.connections->populate_connections (false);
 	auto start_time (std::chrono::steady_clock::now ());
 	auto max_time (std::chrono::minutes (10));

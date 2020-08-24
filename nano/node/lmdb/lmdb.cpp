@@ -514,7 +514,7 @@ void nano::mdb_store::upgrade_v17_to_v18 (nano::write_transaction const & transa
 		{
 			prev_balance = block_balance_v18 (transaction_a, block->hashables.previous);
 		}
-		if (block->hashables.balance == prev_balance && network_params.ledger.epochs.is_epoch_link (block->hashables.link))
+		if (block->hashables.balance == prev_balance && constants.ledger.epochs.is_epoch_link (block->hashables.link))
 		{
 			is_epoch = true;
 		}

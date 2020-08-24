@@ -24,7 +24,7 @@ TEST (ipc, asynchronous)
 	system.nodes[0]->config.ipc_config.transport_tcp.port = 24077;
 	nano::node_rpc_config node_rpc_config;
 	nano::ipc::ipc_server ipc (*system.nodes[0], node_rpc_config);
-	nano::ipc::ipc_client client (system.nodes[0]->io_ctx);
+	nano::ipc::ipc_client client (system.nodes[0]->env.ctx);
 
 	auto req (nano::ipc::prepare_request (nano::ipc::payload_encoding::json_v1, std::string (R"({"action": "block_count"})")));
 	auto res (std::make_shared<std::vector<uint8_t>> ());
@@ -64,7 +64,7 @@ TEST (ipc, synchronous)
 	system.nodes[0]->config.ipc_config.transport_tcp.port = 24077;
 	nano::node_rpc_config node_rpc_config;
 	nano::ipc::ipc_server ipc (*system.nodes[0], node_rpc_config);
-	nano::ipc::ipc_client client (system.nodes[0]->io_ctx);
+	nano::ipc::ipc_client client (system.nodes[0]->env.ctx);
 
 	// Start blocking IPC client in a separate thread
 	std::atomic<bool> call_completed{ false };

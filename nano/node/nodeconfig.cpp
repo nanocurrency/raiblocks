@@ -4,6 +4,7 @@
 #include <nano/lib/rpcconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/node/nodeconfig.hpp>
+#include <nano/node/testing.hpp>
 #include <nano/node/transport/transport.hpp>
 
 #include <crypto/cryptopp/words.h>
@@ -21,26 +22,13 @@ const char * default_test_peer_network = "peering-test.nano.org";
 }
 
 nano::node_config::node_config () :
-node_config (0, nano::logging ())
-{
-}
-
-nano::node_config::node_config (uint16_t peering_port_a, nano::logging const & logging_a) :
-peering_port (peering_port_a),
-logging (logging_a),
 external_address (boost::asio::ip::address_v6{}.to_string ())
 {
-	// The default constructor passes 0 to indicate we should use the default port,
-	// which is determined at node startup based on active network.
-	if (peering_port == 0)
-	{
-		peering_port = network_params.network.default_node_port;
-	}
-	switch (network_params.network.network ())
+	switch (constants.network.network ())
 	{
 		case nano::nano_networks::nano_dev_network:
 			enable_voting = true;
-			preconfigured_representatives.push_back (network_params.ledger.genesis_account);
+			preconfigured_representatives.push_back (constants.ledger.genesis_account);
 			break;
 		case nano::nano_networks::nano_beta_network:
 		{
@@ -63,7 +51,7 @@ external_address (boost::asio::ip::address_v6{}.to_string ())
 			break;
 		case nano::nano_networks::nano_test_network:
 			preconfigured_peers.push_back (default_test_peer_network);
-			preconfigured_representatives.push_back (network_params.ledger.genesis_account);
+			preconfigured_representatives.push_back (constants.ledger.genesis_account);
 			break;
 		default:
 			debug_assert (false);
@@ -324,7 +312,7 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		bool is_deprecated_lmdb_dbs_used = lmdb_max_dbs_default != deprecated_lmdb_max_dbs;
 
 		// Note: using the deprecated setting will result in a fail-fast config error in the future
-		if (!network_params.network.is_dev_network () && is_deprecated_lmdb_dbs_used)
+		if (!constants.network.is_dev_network () && is_deprecated_lmdb_dbs_used)
 		{
 			std::cerr << "WARNING: The node.lmdb_max_dbs setting is deprecated and will be removed in a future version." << std::endl;
 			std::cerr << "Please use the node.lmdb.max_databases setting instead." << std::endl;
@@ -390,7 +378,7 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		}
 
 		// Validate ranges
-		nano::network_params network_params;
+		nano::environment_constants constants;
 		if (online_weight_quorum > 100)
 		{
 			toml.get_error ().set ("online_weight_quorum must be less than 100");
@@ -427,9 +415,9 @@ nano::error nano::node_config::deserialize_toml (nano::tomlconfig & toml)
 		{
 			toml.get_error ().set ("frontiers_confirmation value is invalid (available: always, auto, disabled)");
 		}
-		if (block_processor_batch_max_time < network_params.node.process_confirmed_interval)
+		if (block_processor_batch_max_time < constants.node.process_confirmed_interval)
 		{
-			toml.get_error ().set ((boost::format ("block_processor_batch_max_time value must be equal or larger than %1%ms") % network_params.node.process_confirmed_interval.count ()).str ());
+			toml.get_error ().set ((boost::format ("block_processor_batch_max_time value must be equal or larger than %1%ms") % constants.node.process_confirmed_interval.count ()).str ());
 		}
 	}
 	catch (std::runtime_error const & ex)

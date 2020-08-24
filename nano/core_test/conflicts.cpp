@@ -167,7 +167,7 @@ TEST (conflicts, reprioritize)
 	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key1.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, 0));
 	node1.work_generate_blocking (*send1);
 	auto difficulty1 (send1->difficulty ());
-	auto multiplier1 (nano::normalized_multiplier (nano::difficulty::to_multiplier (difficulty1, nano::work_threshold (send1->work_version (), nano::block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */))), node1.network_params.network.publish_thresholds.epoch_1));
+	auto multiplier1 (nano::normalized_multiplier (nano::difficulty::to_multiplier (difficulty1, nano::work_threshold (send1->work_version (), nano::block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */))), node1.env.constants.network.publish_thresholds.epoch_1));
 	nano::send_block send1_copy (*send1);
 	node1.process_active (send1);
 	node1.block_processor.flush ();
@@ -179,7 +179,7 @@ TEST (conflicts, reprioritize)
 	}
 	node1.work_generate_blocking (send1_copy, difficulty1);
 	auto difficulty2 (send1_copy.difficulty ());
-	auto multiplier2 (nano::normalized_multiplier (nano::difficulty::to_multiplier (difficulty2, nano::work_threshold (send1_copy.work_version (), nano::block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */))), node1.network_params.network.publish_thresholds.epoch_1));
+	auto multiplier2 (nano::normalized_multiplier (nano::difficulty::to_multiplier (difficulty2, nano::work_threshold (send1_copy.work_version (), nano::block_details (nano::epoch::epoch_0, false /* unused */, false /* unused */, false /* unused */))), node1.env.constants.network.publish_thresholds.epoch_1));
 	node1.process_active (std::make_shared<nano::send_block> (send1_copy));
 	node1.block_processor.flush ();
 	{
@@ -193,7 +193,7 @@ TEST (conflicts, reprioritize)
 TEST (conflicts, dependency)
 {
 	nano::system system;
-	nano::node_config node_config (nano::get_available_port (), system.logging);
+	nano::node_config node_config;
 	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 	auto node1 = system.add_node (node_config);
 	nano::genesis genesis;
@@ -220,37 +220,37 @@ TEST (conflicts, dependency)
 TEST (conflicts, adjusted_multiplier)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node1 (*system.add_node (flags));
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node1 (*system.add_node (config));
 	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	nano::keypair key3;
 	ASSERT_EQ (0, node1.active.size ());
-	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key1.pub, nano::genesis_amount - 2 * nano::xrb_ratio, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (genesis.hash ())));
+	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key1.pub, nano::genesis_amount - 2 * nano::xrb_ratio, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (genesis.hash ())));
 	node1.process_active (send1);
-	auto send2 (std::make_shared<nano::send_block> (send1->hash (), nano::dev_genesis_key.pub, nano::genesis_amount - 3 * nano::xrb_ratio, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (send1->hash ())));
+	auto send2 (std::make_shared<nano::send_block> (send1->hash (), nano::dev_genesis_key.pub, nano::genesis_amount - 3 * nano::xrb_ratio, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (send1->hash ())));
 	node1.process_active (send2);
-	auto receive1 (std::make_shared<nano::receive_block> (send2->hash (), send2->hash (), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (send2->hash ())));
+	auto receive1 (std::make_shared<nano::receive_block> (send2->hash (), send2->hash (), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (send2->hash ())));
 	node1.process_active (receive1);
-	auto open1 (std::make_shared<nano::open_block> (send1->hash (), key1.pub, key1.pub, key1.prv, key1.pub, *system.work.generate (key1.pub)));
+	auto open1 (std::make_shared<nano::open_block> (send1->hash (), key1.pub, key1.pub, key1.prv, key1.pub, *system.env.work.generate (key1.pub)));
 	node1.process_active (open1);
-	auto send3 (std::make_shared<nano::state_block> (key1.pub, open1->hash (), key1.pub, nano::xrb_ratio, key2.pub, key1.prv, key1.pub, *system.work.generate (open1->hash ())));
+	auto send3 (std::make_shared<nano::state_block> (key1.pub, open1->hash (), key1.pub, nano::xrb_ratio, key2.pub, key1.prv, key1.pub, *system.env.work.generate (open1->hash ())));
 	node1.process_active (send3);
-	auto send4 (std::make_shared<nano::state_block> (key1.pub, send3->hash (), key1.pub, 0, key3.pub, key1.prv, key1.pub, *system.work.generate (send3->hash ())));
+	auto send4 (std::make_shared<nano::state_block> (key1.pub, send3->hash (), key1.pub, 0, key3.pub, key1.prv, key1.pub, *system.env.work.generate (send3->hash ())));
 	node1.process_active (send4);
 	ASSERT_EQ (node1.ledger.epoch_signer (node1.ledger.epoch_link (nano::epoch::epoch_1)), nano::dev_genesis_key.pub);
-	auto open_epoch1 (std::make_shared<nano::state_block> (key2.pub, 0, 0, 0, node1.ledger.epoch_link (nano::epoch::epoch_1), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (key2.pub)));
+	auto open_epoch1 (std::make_shared<nano::state_block> (key2.pub, 0, 0, 0, node1.ledger.epoch_link (nano::epoch::epoch_1), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (key2.pub)));
 	node1.process_active (open_epoch1);
-	auto receive2 (std::make_shared<nano::state_block> (key2.pub, open_epoch1->hash (), 0, nano::xrb_ratio, send3->hash (), key2.prv, key2.pub, *system.work.generate (open_epoch1->hash ())));
+	auto receive2 (std::make_shared<nano::state_block> (key2.pub, open_epoch1->hash (), 0, nano::xrb_ratio, send3->hash (), key2.prv, key2.pub, *system.env.work.generate (open_epoch1->hash ())));
 	node1.process_active (receive2);
-	auto open2 (std::make_shared<nano::state_block> (key3.pub, 0, key3.pub, nano::xrb_ratio, send4->hash (), key3.prv, key3.pub, *system.work.generate (key3.pub)));
+	auto open2 (std::make_shared<nano::state_block> (key3.pub, 0, key3.pub, nano::xrb_ratio, send4->hash (), key3.prv, key3.pub, *system.env.work.generate (key3.pub)));
 	node1.process_active (open2);
-	auto change1 (std::make_shared<nano::state_block> (key3.pub, open2->hash (), nano::dev_genesis_key.pub, nano::xrb_ratio, 0, key3.prv, key3.pub, *system.work.generate (open2->hash ())));
+	auto change1 (std::make_shared<nano::state_block> (key3.pub, open2->hash (), nano::dev_genesis_key.pub, nano::xrb_ratio, 0, key3.prv, key3.pub, *system.env.work.generate (open2->hash ())));
 	node1.process_active (change1);
 	nano::keypair key4;
-	auto send5 (std::make_shared<nano::state_block> (key3.pub, change1->hash (), nano::dev_genesis_key.pub, 0, key4.pub, key3.prv, key3.pub, *system.work.generate (change1->hash ()))); // Pending for open epoch block
+	auto send5 (std::make_shared<nano::state_block> (key3.pub, change1->hash (), nano::dev_genesis_key.pub, 0, key4.pub, key3.prv, key3.pub, *system.env.work.generate (change1->hash ()))); // Pending for open epoch block
 	node1.process_active (send5);
 	nano::blocks_confirm (node1, { send1, send2, receive1, open1, send3, send4, open_epoch1, receive2, open2, change1, send5 });
 	ASSERT_TIMELY (3s, node1.active.size () == 11);
@@ -279,8 +279,8 @@ TEST (conflicts, adjusted_multiplier)
 	ASSERT_GT (adjusted_multipliers.find (open2->hash ())->second, adjusted_multipliers.find (change1->hash ())->second);
 	ASSERT_GT (adjusted_multipliers.find (change1->hash ())->second, adjusted_multipliers.find (send5->hash ())->second);
 	// Independent elections can have higher difficulty than adjusted tree
-	auto open_epoch2 (std::make_shared<nano::state_block> (key4.pub, 0, 0, 0, node1.ledger.epoch_link (nano::epoch::epoch_1), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (key4.pub, nano::difficulty::from_multiplier ((adjusted_multipliers.find (send1->hash ())->second), node1.network_params.network.publish_thresholds.base))));
-	ASSERT_GT (open_epoch2->difficulty (), nano::difficulty::from_multiplier ((adjusted_multipliers.find (send1->hash ())->second), node1.network_params.network.publish_thresholds.base));
+	auto open_epoch2 (std::make_shared<nano::state_block> (key4.pub, 0, 0, 0, node1.ledger.epoch_link (nano::epoch::epoch_1), nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (key4.pub, nano::difficulty::from_multiplier ((adjusted_multipliers.find (send1->hash ())->second), node1.env.constants.network.publish_thresholds.base))));
+	ASSERT_GT (open_epoch2->difficulty (), nano::difficulty::from_multiplier ((adjusted_multipliers.find (send1->hash ())->second), node1.env.constants.network.publish_thresholds.base));
 	node1.process_active (open_epoch2);
 	node1.block_processor.flush ();
 	node1.block_confirm (open_epoch2);

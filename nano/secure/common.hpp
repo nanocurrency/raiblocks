@@ -340,7 +340,7 @@ public:
 	std::shared_ptr<nano::block> open;
 };
 
-class network_params;
+class environment_constants;
 
 /** Protocol versions whose value may depend on the active network */
 class protocol_constants
@@ -454,14 +454,14 @@ public:
 };
 
 /** Constants whose value depends on the active network */
-class network_params
+class environment_constants
 {
 public:
 	/** Populate values based on the current active network */
-	network_params ();
+	environment_constants ();
 
 	/** Populate values based on \p network_a */
-	network_params (nano::nano_networks network_a);
+	environment_constants (nano::nano_networks network_a);
 
 	std::array<uint8_t, 2> header_magic_number;
 	unsigned kdf_work;

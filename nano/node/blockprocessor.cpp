@@ -22,7 +22,7 @@ nano::block_processor::block_processor (nano::node & node_a, nano::write_databas
 next_log (std::chrono::steady_clock::now ()),
 node (node_a),
 write_database_queue (write_database_queue_a),
-state_block_signature_verification (node.checker, node.ledger.network_params.ledger.epochs, node.config, node.logger, node.flags.block_processor_verification_size)
+state_block_signature_verification (node.checker, node.ledger.constants.ledger.epochs, node.config, node.logger, node.config.flags.block_processor_verification_size)
 {
 	state_block_signature_verification.blocks_verified_callback = [this](std::deque<nano::unchecked_info> & items, std::vector<int> const & verifications, std::vector<nano::block_hash> const & hashes, std::vector<nano::signature> const & blocks_signatures) {
 		this->process_verified_state_blocks (items, verifications, hashes, blocks_signatures);
@@ -74,12 +74,12 @@ size_t nano::block_processor::size ()
 
 bool nano::block_processor::full ()
 {
-	return size () >= node.flags.block_processor_full_size;
+	return size () >= node.config.flags.block_processor_full_size;
 }
 
 bool nano::block_processor::half_full ()
 {
-	return size () >= node.flags.block_processor_full_size / 2;
+	return size () >= node.config.flags.block_processor_full_size / 2;
 }
 
 void nano::block_processor::add (std::shared_ptr<nano::block> block_a, uint64_t origination)
@@ -91,7 +91,7 @@ void nano::block_processor::add (std::shared_ptr<nano::block> block_a, uint64_t 
 void nano::block_processor::add (nano::unchecked_info const & info_a, const bool push_front_preference_a)
 {
 	debug_assert (!nano::work_validate_entry (*info_a.block));
-	bool quarter_full (size () > node.flags.block_processor_full_size / 4);
+	bool quarter_full (size () > node.config.flags.block_processor_full_size / 4);
 	if (info_a.verified == nano::signature_verification::unknown && (info_a.block->type () == nano::block_type::state || info_a.block->type () == nano::block_type::open || !info_a.account.is_zero ()))
 	{
 		state_block_signature_verification.add (info_a);
@@ -220,7 +220,7 @@ void nano::block_processor::process_batch (nano::unique_lock<std::mutex> & lock_
 	timer_l.start ();
 	// Processing blocks
 	unsigned number_of_blocks_processed (0), number_of_forced_processed (0);
-	while ((!blocks.empty () || !forced.empty ()) && (timer_l.before_deadline (node.config.block_processor_batch_max_time) || (number_of_blocks_processed < node.flags.block_processor_batch_size)) && !awaiting_write)
+	while ((!blocks.empty () || !forced.empty ()) && (timer_l.before_deadline (node.config.block_processor_batch_max_time) || (number_of_blocks_processed < node.config.flags.block_processor_batch_size)) && !awaiting_write)
 	{
 		if ((blocks.size () + state_block_signature_verification.size () + forced.size () > 64) && should_log ())
 		{
@@ -305,7 +305,7 @@ void nano::block_processor::process_live (nano::block_hash const & hash_a, std::
 	{
 		node.network.flood_block_initial (block_a);
 	}
-	else if (!node.flags.disable_block_processor_republishing)
+	else if (!node.config.flags.disable_block_processor_republishing)
 	{
 		node.network.flood_block (block_a, nano::buffer_drop_policy::no_limiter_drop);
 	}
@@ -487,7 +487,7 @@ void nano::block_processor::queue_unchecked (nano::write_transaction const & tra
 	auto unchecked_blocks (node.store.unchecked_get (transaction_a, hash_a));
 	for (auto & info : unchecked_blocks)
 	{
-		if (!node.flags.disable_block_processor_unchecked_deletion)
+		if (!node.config.flags.disable_block_processor_unchecked_deletion)
 		{
 			node.store.unchecked_del (transaction_a, nano::unchecked_key (hash_a, info.block->hash ()));
 		}

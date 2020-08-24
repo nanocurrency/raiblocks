@@ -58,16 +58,16 @@ TEST (gap_cache, comparison)
 // Upon receiving enough votes for a gapped block, a lazy bootstrap should be initiated
 TEST (gap_cache, gap_bootstrap)
 {
-	nano::node_flags node_flags;
-	node_flags.disable_legacy_bootstrap = true;
-	node_flags.disable_request_loop = true; // to avoid fallback behavior of broadcasting blocks
-	nano::system system (2, nano::transport::transport_type::tcp, node_flags);
+	nano::node_config config;
+	config.flags.disable_legacy_bootstrap = true;
+	config.flags.disable_request_loop = true; // to avoid fallback behavior of broadcasting blocks
+	nano::system system (2, nano::transport::transport_type::tcp, config);
 
 	auto & node1 (*system.nodes[0]);
 	auto & node2 (*system.nodes[1]);
 	nano::block_hash latest (node1.latest (nano::dev_genesis_key.pub));
 	nano::keypair key;
-	auto send (std::make_shared<nano::send_block> (latest, key.pub, nano::genesis_amount - 100, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (latest)));
+	auto send (std::make_shared<nano::send_block> (latest, key.pub, nano::genesis_amount - 100, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (latest)));
 	node1.process (*send);
 	ASSERT_EQ (nano::genesis_amount - 100, node1.balance (nano::genesis_account));
 	ASSERT_EQ (nano::genesis_amount, node2.balance (nano::genesis_account));
@@ -95,9 +95,9 @@ TEST (gap_cache, two_dependencies)
 	auto & node1 (*system.nodes[0]);
 	nano::keypair key;
 	nano::genesis genesis;
-	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key.pub, 1, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (genesis.hash ())));
-	auto send2 (std::make_shared<nano::send_block> (send1->hash (), key.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (send1->hash ())));
-	auto open (std::make_shared<nano::open_block> (send1->hash (), key.pub, key.pub, key.prv, key.pub, *system.work.generate (key.pub)));
+	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key.pub, 1, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (genesis.hash ())));
+	auto send2 (std::make_shared<nano::send_block> (send1->hash (), key.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.env.work.generate (send1->hash ())));
+	auto open (std::make_shared<nano::open_block> (send1->hash (), key.pub, key.pub, key.prv, key.pub, *system.env.work.generate (key.pub)));
 	ASSERT_EQ (0, node1.gap_cache.size ());
 	node1.block_processor.add (send2, nano::seconds_since_epoch ());
 	node1.block_processor.flush ();

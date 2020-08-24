@@ -180,6 +180,7 @@ public:
 	bool empty () const;
 	void erase (nano::transport::channel const &);
 	void erase_below_version (uint8_t);
+	uint16_t port_to_use (uint16_t) const;
 	nano::message_buffer_manager buffer_container;
 	boost::asio::ip::udp::resolver resolver;
 	std::vector<boost::thread> packet_processing_threads;
@@ -188,9 +189,9 @@ public:
 	nano::tcp_message_manager tcp_message_manager;
 	nano::node & node;
 	nano::network_filter publish_filter;
+	std::atomic<uint16_t> port{ 0 };
 	nano::transport::udp_channels udp_channels;
 	nano::transport::tcp_channels tcp_channels;
-	std::atomic<uint16_t> port{ 0 };
 	std::function<void()> disconnect_observer;
 	// Called when a new channel is observed
 	std::function<void(std::shared_ptr<nano::transport::channel>)> channel_observer;

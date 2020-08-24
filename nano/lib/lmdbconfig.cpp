@@ -31,13 +31,13 @@ nano::error nano::lmdb_config::serialize_toml (nano::tomlconfig & toml) const
 
 nano::error nano::lmdb_config::deserialize_toml (nano::tomlconfig & toml, bool is_deprecated_lmdb_dbs_used)
 {
-	static nano::network_params params;
+	static nano::environment_constants constants;
 	auto default_max_databases = max_databases;
 	toml.get_optional<uint32_t> ("max_databases", max_databases);
 	toml.get_optional<size_t> ("map_size", map_size);
 
 	// For now we accept either setting, but not both
-	if (!params.network.is_dev_network () && is_deprecated_lmdb_dbs_used && default_max_databases != max_databases)
+	if (!constants.network.is_dev_network () && is_deprecated_lmdb_dbs_used && default_max_databases != max_databases)
 	{
 		toml.get_error ().set ("Both the deprecated node.lmdb_max_dbs and the new node.lmdb.max_databases setting are used. Please use max_databases only.");
 	}

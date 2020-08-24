@@ -82,7 +82,7 @@ nano::tcp_endpoint nano::transport::map_endpoint_to_tcp (nano::endpoint const & 
 nano::transport::channel::channel (nano::node & node_a) :
 node (node_a)
 {
-	set_network_version (node_a.network_params.protocol.protocol_version);
+	set_network_version (node_a.env.constants.protocol.protocol_version);
 }
 
 void nano::transport::channel::send (nano::message const & message_a, std::function<void(boost::system::error_code const &, size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)

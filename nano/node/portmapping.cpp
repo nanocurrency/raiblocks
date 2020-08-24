@@ -9,7 +9,7 @@
 
 nano::port_mapping::port_mapping (nano::node & node_a) :
 node (node_a),
-protocols ({ { { "TCP", boost::asio::ip::address_v4::any (), 0, true }, { "UDP", boost::asio::ip::address_v4::any (), 0, !node_a.flags.disable_udp } } })
+protocols ({ { { "TCP", boost::asio::ip::address_v4::any (), 0, true }, { "UDP", boost::asio::ip::address_v4::any (), 0, !node_a.config.flags.disable_udp } } })
 {
 }
 
@@ -28,7 +28,7 @@ std::string nano::port_mapping::get_config_port (std::string const & node_port_a
 
 void nano::port_mapping::refresh_devices ()
 {
-	if (!network_params.network.is_dev_network ())
+	if (!constants.network.is_dev_network ())
 	{
 		upnp_state upnp_l;
 		int discover_error_l = 0;
@@ -74,7 +74,7 @@ nano::endpoint nano::port_mapping::external_address ()
 
 void nano::port_mapping::refresh_mapping ()
 {
-	debug_assert (!network_params.network.is_dev_network ());
+	debug_assert (!constants.network.is_dev_network ());
 	if (on)
 	{
 		nano::lock_guard<std::mutex> guard_l (mutex);
@@ -84,8 +84,8 @@ void nano::port_mapping::refresh_mapping ()
 		// We don't map the RPC port because, unless RPC authentication was added, this would almost always be a security risk
 		for (auto & protocol : protocols | boost::adaptors::filtered ([](auto const & p) { return p.enabled; }))
 		{
-			auto const lease_duration = std::chrono::duration_cast<std::chrono::seconds> (network_params.portmapping.lease_duration);
-			auto upnp_description = std::string ("Nano Node (") + network_params.network.get_current_network_as_string () + ")";
+			auto const lease_duration = std::chrono::duration_cast<std::chrono::seconds> (constants.portmapping.lease_duration);
+			auto upnp_description = std::string ("Nano Node (") + constants.network.get_current_network_as_string () + ")";
 			auto add_port_mapping_error_l (UPNP_AddPortMapping (upnp.urls.controlURL, upnp.data.first.servicetype, config_port_l.c_str (), node_port_l.c_str (), address.to_string ().c_str (), upnp_description.c_str (), protocol.name, nullptr, std::to_string (lease_duration.count ()).c_str ()));
 			if (node.config.logging.upnp_details_logging ())
 			{
@@ -97,7 +97,7 @@ void nano::port_mapping::refresh_mapping ()
 				node.logger.always_log (boost::str (boost::format ("UPnP %1%:%2% mapped to %3%") % protocol.external_address % config_port_l % node_port_l));
 
 				// Refresh mapping before the leasing ends
-				node.alarm.add (std::chrono::steady_clock::now () + lease_duration - std::chrono::seconds (10), [node_l = node.shared ()]() {
+				node.env.alarm.add (std::chrono::steady_clock::now () + lease_duration - std::chrono::seconds (10), [node_l = node.shared ()]() {
 					node_l->port_mapping.refresh_mapping ();
 				});
 			}
@@ -113,7 +113,7 @@ void nano::port_mapping::refresh_mapping ()
 bool nano::port_mapping::check_mapping ()
 {
 	// Long discovery time and fast setup/teardown make this impractical for testing
-	debug_assert (!network_params.network.is_dev_network ());
+	debug_assert (!constants.network.is_dev_network ());
 	bool result_l (true);
 	nano::lock_guard<std::mutex> guard_l (mutex);
 	auto node_port_l (std::to_string (node.network.endpoint ().port ()));
@@ -167,7 +167,7 @@ void nano::port_mapping::check_mapping_loop ()
 			refresh_mapping ();
 		}
 		// Check for mapping health frequently
-		node.alarm.add (std::chrono::steady_clock::now () + network_params.portmapping.health_check_period, [node_l = node.shared ()]() {
+		node.env.alarm.add (std::chrono::steady_clock::now () + constants.portmapping.health_check_period, [node_l = node.shared ()]() {
 			node_l->port_mapping.check_mapping_loop ();
 		});
 	}
@@ -178,7 +178,7 @@ void nano::port_mapping::check_mapping_loop ()
 			node.logger.always_log (boost::str (boost::format ("UPnP No IGD devices found")));
 		}
 		// Check for new devices later
-		node.alarm.add (std::chrono::steady_clock::now () + std::chrono::minutes (5), [node_l = node.shared ()]() {
+		node.env.alarm.add (std::chrono::steady_clock::now () + std::chrono::minutes (5), [node_l = node.shared ()]() {
 			node_l->port_mapping.check_mapping_loop ();
 		});
 	}

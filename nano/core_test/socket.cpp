@@ -9,12 +9,14 @@ using namespace std::chrono_literals;
 
 TEST (socket, drop_policy)
 {
-	auto node_flags = nano::inactive_node_flag_defaults ();
-	node_flags.read_only = false;
-	nano::inactive_node inactivenode (nano::unique_path (), node_flags);
+	nano::environment env{ nano::unique_path () };
+	nano::node_flags flags;
+	auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive) };
+	flags.read_only = false;
+	nano::inactive_node inactivenode{ env, flags };
 	auto node = inactivenode.node;
 
-	nano::thread_runner runner (node->io_ctx, 1);
+	nano::thread_runner runner (node->env.ctx, 1);
 
 	std::vector<std::shared_ptr<nano::socket>> connections;
 
@@ -75,14 +77,16 @@ TEST (socket, drop_policy)
 
 TEST (socket, concurrent_writes)
 {
-	auto node_flags = nano::inactive_node_flag_defaults ();
-	node_flags.read_only = false;
-	nano::inactive_node inactivenode (nano::unique_path (), node_flags);
+	nano::environment env{ nano::unique_path () };
+	nano::node_flags flags;
+	auto error{ env.apply_overrides (flags, nano::environment::purpose::inactive) };
+	flags.read_only = false;
+	nano::inactive_node inactivenode{ env, flags };
 	auto node = inactivenode.node;
 
 	// This gives more realistic execution than using system#poll, allowing writes to
 	// queue up and drain concurrently.
-	nano::thread_runner runner (node->io_ctx, 1);
+	nano::thread_runner runner (node->env.ctx, 1);
 
 	constexpr size_t max_connections = 4;
 	constexpr size_t client_count = max_connections;

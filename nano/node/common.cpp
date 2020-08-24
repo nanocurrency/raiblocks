@@ -24,8 +24,8 @@ namespace
 {
 nano::protocol_constants const & get_protocol_constants ()
 {
-	static nano::network_params params;
-	return params.protocol;
+	static nano::environment_constants constants;
+	return constants.protocol;
 }
 }
 
@@ -65,8 +65,8 @@ nano::message_header::message_header (bool & error_a, nano::stream & stream_a)
 
 void nano::message_header::serialize (nano::stream & stream_a, bool use_epoch_2_min_version_a) const
 {
-	static nano::network_params network_params;
-	nano::write (stream_a, network_params.header_magic_number);
+	static nano::environment_constants constants;
+	nano::write (stream_a, constants.header_magic_number);
 	nano::write (stream_a, version_max);
 	nano::write (stream_a, version_using);
 	nano::write (stream_a, get_protocol_constants ().protocol_version_min (use_epoch_2_min_version_a));
@@ -79,11 +79,11 @@ bool nano::message_header::deserialize (nano::stream & stream_a)
 	auto error (false);
 	try
 	{
-		static nano::network_params network_params;
+		static nano::environment_constants constants;
 		uint16_t extensions_l;
 		std::array<uint8_t, 2> magic_number_l;
 		read (stream_a, magic_number_l);
-		if (magic_number_l != network_params.header_magic_number)
+		if (magic_number_l != constants.header_magic_number)
 		{
 			throw std::runtime_error ("Magic numbers do not match");
 		}

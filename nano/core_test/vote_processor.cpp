@@ -16,7 +16,7 @@ TEST (vote_processor, codes)
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
 	auto vote_invalid = std::make_shared<nano::vote> (*vote);
 	vote_invalid->signature.bytes[0] ^= 1;
-	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.env.constants.protocol.protocol_version));
 
 	// Invalid signature
 	ASSERT_EQ (nano::vote_code::invalid, node.vote_processor.vote_blocking (vote_invalid, channel, false));
@@ -55,7 +55,7 @@ TEST (vote_processor, flush)
 	auto & node (*system.nodes[0]);
 	nano::genesis genesis;
 	auto vote (std::make_shared<nano::vote> (nano::dev_genesis_key.pub, nano::dev_genesis_key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.env.constants.protocol.protocol_version));
 	for (unsigned i = 0; i < 2000; ++i)
 	{
 		auto new_vote (std::make_shared<nano::vote> (*vote));
@@ -75,7 +75,7 @@ TEST (vote_processor, invalid_signature)
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
 	auto vote_invalid = std::make_shared<nano::vote> (*vote);
 	vote_invalid->signature.bytes[0] ^= 1;
-	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.env.constants.protocol.protocol_version));
 
 	genesis.open->sideband_set (nano::block_sideband (nano::genesis_account, 0, nano::genesis_amount, 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
 	auto election (node.active.insert (genesis.open));
@@ -92,26 +92,26 @@ TEST (vote_processor, invalid_signature)
 TEST (vote_processor, no_capacity)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.vote_processor_capacity = 0;
-	auto & node (*system.add_node (node_flags));
+	nano::node_config config;
+	config.flags.vote_processor_capacity = 0;
+	auto & node (*system.add_node (config));
 	nano::genesis genesis;
 	nano::keypair key;
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.env.constants.protocol.protocol_version));
 	ASSERT_TRUE (node.vote_processor.vote (vote, channel));
 }
 
 TEST (vote_processor, overflow)
 {
 	nano::system system;
-	nano::node_flags node_flags;
-	node_flags.vote_processor_capacity = 1;
-	auto & node (*system.add_node (node_flags));
+	nano::node_config config;
+	config.flags.vote_processor_capacity = 1;
+	auto & node (*system.add_node (config));
 	nano::genesis genesis;
 	nano::keypair key;
 	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
-	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.network_params.protocol.protocol_version));
+	auto channel (std::make_shared<nano::transport::channel_udp> (node.network.udp_channels, node.network.endpoint (), node.env.constants.protocol.protocol_version));
 
 	// No way to lock the processor, but queueing votes in quick succession must result in overflow
 	size_t not_processed{ 0 };
@@ -182,10 +182,10 @@ TEST (vote_processor, weights)
 TEST (vote_processor, no_broadcast_local)
 {
 	nano::system system;
-	nano::node_flags flags;
-	flags.disable_request_loop = true;
-	auto & node (*system.add_node (flags));
-	system.add_node (flags);
+	nano::node_config config;
+	config.flags.disable_request_loop = true;
+	auto & node (*system.add_node (config));
+	system.add_node (config);
 	nano::block_builder builder;
 	std::error_code ec;
 	// Reduce the weight of genesis to 2x default min voting weight
@@ -197,7 +197,7 @@ TEST (vote_processor, no_broadcast_local)
 	                                    .balance (2 * node.config.vote_minimum.number ())
 	                                    .link (key.pub)
 	                                    .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                                    .work (*system.work.generate (nano::genesis_hash))
+	                                    .work (*system.env.work.generate (nano::genesis_hash))
 	                                    .build (ec);
 	ASSERT_FALSE (ec);
 	ASSERT_EQ (nano::process_result::progress, node.process_local (send).code);
@@ -233,7 +233,7 @@ TEST (vote_processor, no_broadcast_local)
 	                                     .balance (node.config.vote_minimum)
 	                                     .link (key.pub)
 	                                     .sign (nano::dev_genesis_key.prv, nano::dev_genesis_key.pub)
-	                                     .work (*system.work.generate (send->hash ()))
+	                                     .work (*system.env.work.generate (send->hash ()))
 	                                     .build (ec);
 	ASSERT_FALSE (ec);
 	ASSERT_EQ (nano::process_result::progress, node.process_local (send2).code);
@@ -261,7 +261,7 @@ TEST (vote_processor, no_broadcast_local)
 	                                    .balance (nano::genesis_amount - 2 * node.config.vote_minimum.number ())
 	                                    .link (send->hash ())
 	                                    .sign (key.prv, key.pub)
-	                                    .work (*system.work.generate (key.pub))
+	                                    .work (*system.env.work.generate (key.pub))
 	                                    .build (ec);
 	ASSERT_FALSE (ec);
 	ASSERT_EQ (nano::process_result::progress, node.process_local (open).code);

@@ -50,7 +50,7 @@ public:
 	nano::account const & epoch_signer (nano::link const &) const;
 	nano::link const & epoch_link (nano::epoch) const;
 	static nano::uint128_t const unit;
-	nano::network_params network_params;
+	nano::environment_constants constants;
 	nano::block_store & store;
 	nano::ledger_cache cache;
 	nano::stat & stats;

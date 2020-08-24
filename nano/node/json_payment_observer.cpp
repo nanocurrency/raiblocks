@@ -17,7 +17,7 @@ response (response_a)
 void nano::json_payment_observer::start (uint64_t timeout)
 {
 	auto this_l (shared_from_this ());
-	node.alarm.add (std::chrono::steady_clock::now () + std::chrono::milliseconds (timeout), [this_l]() {
+	node.env.alarm.add (std::chrono::steady_clock::now () + std::chrono::milliseconds (timeout), [this_l]() {
 		this_l->complete (nano::payment_status::nothing);
 	});
 }

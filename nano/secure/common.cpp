@@ -75,12 +75,12 @@ std::shared_ptr<nano::block> parse_block_from_genesis_data (std::string const & 
 }
 }
 
-nano::network_params::network_params () :
-network_params (network_constants::active_network)
+nano::environment_constants::environment_constants () :
+environment_constants (network_constants::active_network)
 {
 }
 
-nano::network_params::network_params (nano::nano_networks network_a) :
+nano::environment_constants::environment_constants (nano::nano_networks network_a) :
 network (network_a), ledger (network), voting (network), node (network), portmapping (network), bootstrap (network)
 {
 	unsigned constexpr kdf_full_work = 64 * 1024;
@@ -800,7 +800,7 @@ std::unique_ptr<nano::container_info_component> nano::collect_container_info (vo
 
 nano::genesis::genesis ()
 {
-	static nano::network_params network_params;
+	static nano::environment_constants network_params;
 	open = parse_block_from_genesis_data (network_params.ledger.genesis_block);
 	debug_assert (open != nullptr);
 }

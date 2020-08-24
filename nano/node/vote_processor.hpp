@@ -12,18 +12,17 @@
 
 namespace nano
 {
-class signature_checker;
 class active_transactions;
 class block_store;
-class node_observers;
-class stats;
-class node_config;
-class logger_mt;
-class online_reps;
+class environment_constants;
 class ledger;
-class network_params;
+class logger_mt;
+class node_config;
 class node_flags;
-
+class node_observers;
+class online_reps;
+class signature_checker;
+class stats;
 class transaction;
 namespace transport
 {
@@ -33,7 +32,7 @@ namespace transport
 class vote_processor final
 {
 public:
-	explicit vote_processor (nano::signature_checker & checker_a, nano::active_transactions & active_a, nano::node_observers & observers_a, nano::stat & stats_a, nano::node_config & config_a, nano::node_flags & flags_a, nano::logger_mt & logger_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::network_params & network_params_a);
+	explicit vote_processor (nano::signature_checker & checker_a, nano::active_transactions & active_a, nano::node_observers & observers_a, nano::stat & stats_a, nano::node_config & config_a, nano::node_flags & flags_a, nano::logger_mt & logger_a, nano::online_reps & online_reps_a, nano::ledger & ledger_a, nano::environment_constants & constants_a);
 	/** Returns false if the vote was processed */
 	bool vote (std::shared_ptr<nano::vote>, std::shared_ptr<nano::transport::channel>);
 	/** Note: node.active.mutex lock is required */
@@ -56,7 +55,7 @@ private:
 	nano::logger_mt & logger;
 	nano::online_reps & online_reps;
 	nano::ledger & ledger;
-	nano::network_params & network_params;
+	nano::environment_constants & constants;
 
 	size_t max_votes;
 

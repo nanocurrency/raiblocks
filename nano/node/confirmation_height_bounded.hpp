@@ -127,7 +127,7 @@ private:
 	std::function<void(std::vector<std::shared_ptr<nano::block>> const &)> notify_observers_callback;
 	std::function<void(nano::block_hash const &)> notify_block_already_cemented_observers_callback;
 	std::function<uint64_t ()> awaiting_processing_size_callback;
-	nano::network_params network_params;
+	nano::environment_constants constants;
 
 	friend std::unique_ptr<nano::container_info_component> collect_container_info (confirmation_height_bounded &, const std::string & name_a);
 };
