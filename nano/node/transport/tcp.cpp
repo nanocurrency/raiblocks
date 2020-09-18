@@ -50,29 +50,46 @@ bool nano::transport::channel_tcp::operator== (nano::transport::channel const & 
 	return result;
 }
 
-void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void(boost::system::error_code const &, size_t)> const & callback_a, nano::buffer_drop_policy drop_policy_a)
+void nano::transport::channel_tcp::send_buffer (nano::shared_const_buffer const & buffer_a, std::function<void(boost::system::error_code const &, size_t)> const & callback_a, nano::buffer_drop_policy policy_a)
 {
 	if (auto socket_l = socket.lock ())
 	{
-		socket_l->async_write (
-		buffer_a, [endpoint_a = socket_l->remote_endpoint (), node = std::weak_ptr<nano::node> (node.shared ()), callback_a](boost::system::error_code const & ec, size_t size_a) {
-			if (auto node_l = node.lock ())
+		if (!socket_l->max () || (policy_a == nano::buffer_drop_policy::no_socket_drop && !socket_l->full ()))
+		{
+			socket_l->async_write (
+			buffer_a, [endpoint_a = socket_l->remote_endpoint (), node = std::weak_ptr<nano::node> (node.shared ()), callback_a](boost::system::error_code const & ec, size_t size_a) {
+				if (auto node_l = node.lock ())
+				{
+					if (!ec)
+					{
+						node_l->network.tcp_channels.update (endpoint_a);
+					}
+					if (ec == boost::system::errc::host_unreachable)
+					{
+						node_l->stats.inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
+					}
+					if (callback_a)
+					{
+						callback_a (ec, size_a);
+					}
+				}
+			});
+		}
+		else
+		{
+			if (policy_a == nano::buffer_drop_policy::no_socket_drop)
 			{
-				if (!ec)
-				{
-					node_l->network.tcp_channels.update (endpoint_a);
-				}
-				if (ec == boost::system::errc::host_unreachable)
-				{
-					node_l->stats.inc (nano::stat::type::error, nano::stat::detail::unreachable_host, nano::stat::dir::out);
-				}
-				if (callback_a)
-				{
-					callback_a (ec, size_a);
-				}
+				node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_no_socket_drop, nano::stat::dir::out);
 			}
-		},
-		drop_policy_a);
+			else
+			{
+				node.stats.inc (nano::stat::type::tcp, nano::stat::detail::tcp_write_drop, nano::stat::dir::out);
+			}
+			if (callback_a)
+			{
+				callback_a (boost::system::errc::make_error_code (boost::system::errc::no_buffer_space), 0);
+			}
+		}
 	}
 	else if (callback_a)
 	{
@@ -290,7 +307,6 @@ void nano::transport::tcp_channels::process_message (nano::message const & messa
 				if (!node_id_a.is_zero ())
 				{
 					// Add temporary channel
-					socket_a->set_writer_concurrency (nano::socket::concurrency::multi_writer);
 					auto temporary_channel (std::make_shared<nano::transport::channel_tcp> (node, socket_a));
 					debug_assert (endpoint_a == temporary_channel->get_tcp_endpoint ());
 					temporary_channel->set_node_id (node_id_a);
@@ -531,12 +547,13 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 		node.network.tcp_channels.udp_fallback (endpoint_a, callback_a);
 		return;
 	}
-	auto socket (std::make_shared<nano::socket> (node.shared_from_this (), boost::none, nano::socket::concurrency::multi_writer));
+	auto socket (std::make_shared<nano::socket> (node));
 	std::weak_ptr<nano::socket> socket_w (socket);
 	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket_w));
-	std::weak_ptr<nano::node> node_w (node.shared ());
-	socket->async_connect (nano::transport::map_endpoint_to_tcp (endpoint_a),
-	[node_w, channel, socket, endpoint_a, callback_a](boost::system::error_code const & ec) {
+	node.spawn (
+	[node_w = std::weak_ptr<nano::node>{ node.shared () }, channel, socket, endpoint_a, callback_a](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		socket->async_connect (nano::transport::map_endpoint_to_tcp (endpoint_a), yield[ec]);
 		if (auto node_l = node_w.lock ())
 		{
 			if (!ec && channel)
@@ -665,7 +682,10 @@ void nano::transport::tcp_channels::start_tcp_receive_node_id (std::shared_ptr<n
 													// Listen for possible responses
 													response_server->type = nano::bootstrap_server_type::realtime_response_server;
 													response_server->remote_node_id = channel_a->get_node_id ();
-													response_server->receive ();
+													node_l->spawn (
+													[response_server](boost::asio::yield_context yield) {
+														response_server->run (yield);
+													});
 													node_l->network.tcp_channels.remove_node_id_handshake_socket (socket_l);
 
 													if (!node_l->flags.disable_initial_telemetry_requests)

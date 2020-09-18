@@ -10,6 +10,7 @@ add_executable (core_test
 	confirmation_height.cpp
 	confirmation_solicitor.cpp
 	conflicts.cpp
+	coroutines.cpp
 	difficulty.cpp
 	distributed_work.cpp
 	election.cpp

@@ -2,6 +2,8 @@
 
 #include <nano/node/common.hpp>
 
+#include <boost/asio/spawn.hpp>
+
 #include <deque>
 #include <future>
 
@@ -9,14 +11,14 @@ namespace nano
 {
 class bootstrap_attempt;
 class bootstrap_client;
+class socket;
 class frontier_req_client final : public std::enable_shared_from_this<nano::frontier_req_client>
 {
 public:
 	explicit frontier_req_client (std::shared_ptr<nano::bootstrap_client>, std::shared_ptr<nano::bootstrap_attempt>);
 	~frontier_req_client ();
 	void run ();
-	void receive_frontier ();
-	void received_frontier (boost::system::error_code const &, size_t);
+	void receive_frontiers (boost::asio::yield_context yield);
 	void unsynced (nano::block_hash const &, nano::block_hash const &);
 	void next ();
 	std::shared_ptr<nano::bootstrap_client> connection;

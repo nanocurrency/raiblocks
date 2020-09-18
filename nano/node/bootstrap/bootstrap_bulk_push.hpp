@@ -2,6 +2,8 @@
 
 #include <nano/node/common.hpp>
 
+#include <boost/asio/spawn.hpp>
+
 #include <future>
 
 namespace nano
@@ -28,9 +30,9 @@ class bulk_push_server final : public std::enable_shared_from_this<nano::bulk_pu
 public:
 	explicit bulk_push_server (std::shared_ptr<nano::bootstrap_server> const &);
 	void throttled_receive ();
-	void receive ();
-	void received_type ();
-	void received_block (boost::system::error_code const &, size_t, nano::block_type);
+	void receive (boost::asio::yield_context yield);
+	void received_type (nano::block_type type_a, boost::asio::yield_context yield);
+	void received_block (nano::block_type type_a, size_t size_a);
 	std::shared_ptr<std::vector<uint8_t>> receive_buffer;
 	std::shared_ptr<nano::bootstrap_server> connection;
 };

@@ -4,6 +4,7 @@
 #include <nano/boost/asio/strand.hpp>
 #include <nano/lib/asio.hpp>
 
+#include <boost/asio/spawn.hpp>
 #include <boost/optional.hpp>
 
 #include <chrono>
@@ -34,40 +35,34 @@ class socket : public std::enable_shared_from_this<nano::socket>
 
 public:
 	/**
-	 * If multi_writer is used, overlapping writes are allowed, including from multiple threads.
-	 * For bootstrapping, reading and writing alternates on a socket, thus single_writer
-	 * should be used to avoid queueing overhead. For live messages, multiple threads may want
-	 * to concurrenctly queue messages on the same socket, thus multi_writer should be used.
-	 */
-	enum class concurrency
-	{
-		single_writer,
-		multi_writer
-	};
-
-	/**
 	 * Constructor
 	 * @param node Owning node
 	 * @param io_timeout If tcp async operation is not completed within the timeout, the socket is closed. If not set, the tcp_io_timeout config option is used.
 	 * @param concurrency write concurrency
 	 */
-	explicit socket (std::shared_ptr<nano::node> node, boost::optional<std::chrono::seconds> io_timeout = boost::none, concurrency = concurrency::single_writer);
+	explicit socket (nano::node & node);
 	virtual ~socket ();
-	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void(boost::system::error_code const &)>);
+	void async_connect (boost::asio::ip::tcp::endpoint const &, boost::asio::yield_context yield);
 	void async_read (std::shared_ptr<std::vector<uint8_t>>, size_t, std::function<void(boost::system::error_code const &, size_t)>);
-	void async_write (nano::shared_const_buffer const &, std::function<void(boost::system::error_code const &, size_t)> const & = nullptr, nano::buffer_drop_policy = nano::buffer_drop_policy::limiter);
+	size_t async_read (std::shared_ptr<std::vector<uint8_t>>, size_t, boost::asio::yield_context yield);
+	void async_write (nano::shared_const_buffer const &, std::function<void(boost::system::error_code const &, size_t)> const & = nullptr);
+	size_t async_write (nano::shared_const_buffer const & buffer_a, boost::asio::yield_context yield);
 
 	void close ();
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;
 	/** Returns true if the socket has timed out */
 	bool has_timed_out () const;
 	/** This can be called to change the maximum idle time, e.g. based on the type of traffic detected. */
-	void set_timeout (std::chrono::seconds io_timeout_a);
+	void timeout_set (std::chrono::seconds io_timeout_a);
 	void start_timer (std::chrono::seconds deadline_a);
-	/** Change write concurrent */
-	void set_writer_concurrency (concurrency writer_concurrency_a);
-	/** Returns the maximum number of buffers in the write queue */
-	size_t get_max_write_queue_size () const;
+	bool max () const
+	{
+		return queue_size >= queue_size_max;
+	}
+	bool full () const
+	{
+		return queue_size >= queue_size_max * 2;
+	}
 
 protected:
 	/** Holds the buffer and callback for queued writes */
@@ -80,29 +75,26 @@ protected:
 
 	boost::asio::strand<boost::asio::io_context::executor_type> strand;
 	boost::asio::ip::tcp::socket tcp_socket;
-	std::weak_ptr<nano::node> node;
+	nano::node & node;
 
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
-	/** Send queue, protected by always being accessed in the strand */
-	std::deque<queue_item> send_queue;
-	std::atomic<concurrency> writer_concurrency;
 
 	std::atomic<uint64_t> next_deadline;
 	std::atomic<uint64_t> last_completion_time;
 	std::atomic<bool> timed_out{ false };
-	boost::optional<std::chrono::seconds> io_timeout;
-	size_t const queue_size_max = 128;
+	std::atomic<std::chrono::seconds> io_timeout;
+	std::atomic<size_t> queue_size{ 0 };
 
 	/** Set by close() - completion handlers must check this. This is more reliable than checking
 	 error codes as the OS may have already completed the async operation. */
 	std::atomic<bool> closed{ false };
-	void close_internal ();
-	void write_queued_messages ();
 	void start_timer ();
 	void stop_timer ();
 	void checkup ();
-	void flush_send_queue_callbacks ();
+
+public:
+	static size_t constexpr queue_size_max = 128;
 };
 
 /** Socket class for TCP servers */
@@ -116,13 +108,15 @@ public:
 	 * @param max_connections_a Maximum number of concurrent connections
 	 * @param concurrency_a Write concurrency for new connections
 	 */
-	explicit server_socket (std::shared_ptr<nano::node> node_a, boost::asio::ip::tcp::endpoint local_a, size_t max_connections_a, concurrency concurrency_a = concurrency::single_writer);
+	explicit server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, size_t max_connections_a);
+	void async_accept (socket & socket_a, boost::asio::yield_context yield);
 	/**Start accepting new connections */
 	void start (boost::system::error_code &);
 	/** Stop accepting new connections */
 	void close ();
 	/** Register callback for new connections. The callback must return true to keep accepting new connections. */
 	void on_connection (std::function<bool(std::shared_ptr<nano::socket> new_connection, boost::system::error_code const &)>);
+	void run (std::function<bool(std::shared_ptr<nano::socket>, boost::system::error_code const &)> callback_a, boost::asio::yield_context yield);
 	uint16_t listening_port ()
 	{
 		return local.port ();
@@ -133,8 +127,6 @@ private:
 	boost::asio::ip::tcp::acceptor acceptor;
 	boost::asio::ip::tcp::endpoint local;
 	size_t max_inbound_connections;
-	/** Concurrency setting for new connections */
-	concurrency concurrency_new_connections;
 	void evict_dead_connections ();
 };
 }

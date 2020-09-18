@@ -126,15 +126,16 @@ void nano::distributed_work::start_local ()
 
 void nano::distributed_work::do_request (nano::tcp_endpoint const & endpoint_a)
 {
-	auto this_l (shared_from_this ());
 	auto connection (std::make_shared<peer_request> (node.io_ctx, endpoint_a));
 	{
 		nano::lock_guard<std::mutex> lock (mutex);
 		connections.emplace_back (connection);
 	}
-	connection->socket.async_connect (connection->endpoint,
-	boost::asio::bind_executor (strand,
-	[this_l, connection](boost::system::error_code const & ec) {
+	boost::asio::spawn (
+	strand,
+	[this_l = shared_from_this (), connection = connection](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		connection->socket.async_connect (connection->endpoint, yield[ec]);
 		if (!ec && !this_l->stopped)
 		{
 			std::string request_string;
@@ -193,16 +194,17 @@ void nano::distributed_work::do_request (nano::tcp_endpoint const & endpoint_a)
 			this_l->add_bad_peer (connection->endpoint);
 			this_l->failure ();
 		}
-	}));
+	},
+	boost::coroutines::attributes (128 * 1024));
 }
 
 void nano::distributed_work::do_cancel (nano::tcp_endpoint const & endpoint_a)
 {
-	auto this_l (shared_from_this ());
 	auto cancelling_l (std::make_shared<peer_request> (node.io_ctx, endpoint_a));
-	cancelling_l->socket.async_connect (cancelling_l->endpoint,
-	boost::asio::bind_executor (strand,
-	[this_l, cancelling_l](boost::system::error_code const & ec) {
+	boost::asio::spawn (strand,
+	[this_l = shared_from_this (), cancelling_l](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		cancelling_l->socket.async_connect (cancelling_l->endpoint, yield[ec]);
 		if (!ec)
 		{
 			std::string request_string;
@@ -224,7 +226,7 @@ void nano::distributed_work::do_cancel (nano::tcp_endpoint const & endpoint_a)
 				}
 			}));
 		}
-	}));
+	});
 }
 
 void nano::distributed_work::success (std::string const & body_a, nano::tcp_endpoint const & endpoint_a)

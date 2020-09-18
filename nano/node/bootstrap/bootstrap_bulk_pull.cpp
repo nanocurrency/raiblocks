@@ -120,171 +120,163 @@ void nano::bulk_pull_client::throttled_receive_block ()
 
 void nano::bulk_pull_client::receive_block ()
 {
-	auto this_l (shared_from_this ());
-	if (auto socket_l = connection->channel->socket.lock ())
+	connection->node->spawn (
+	[this_l = shared_from_this ()] (boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		auto read = this_l->connection->socket->async_read (this_l->connection->receive_buffer, 1, yield[ec]);
+		if (!ec && read == 1)
+		{
+			nano::block_type type (static_cast<nano::block_type> (this_l->connection->receive_buffer->data ()[0]));
+			this_l->received_type (type, yield);
+		}
+		else
+		{
+			if (this_l->connection->node->config.logging.bulk_pull_logging ())
+			{
+				this_l->connection->node->logger.try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
+			}
+			this_l->connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
+			this_l->network_error = true;
+		}
+	});
+}
+
+void nano::bulk_pull_client::received_type (nano::block_type type_a, boost::asio::yield_context yield)
+{
+	switch (type_a)
 	{
-		socket_l->async_read (connection->receive_buffer, 1, [this_l](boost::system::error_code const & ec, size_t size_a) {
+		case nano::block_type::send:
+		case nano::block_type::receive:
+		case nano::block_type::open:
+		case nano::block_type::change:
+		case nano::block_type::state:
+		{
+			size_t to_read = 0;
+			switch (type_a)
+			{
+				case nano::block_type::send:
+					to_read = nano::send_block::size;
+					break;
+				case nano::block_type::receive:
+					to_read = nano::receive_block::size;
+					break;
+				case nano::block_type::open:
+					to_read = nano::open_block::size;
+					break;
+				case nano::block_type::change:
+					to_read = nano::change_block::size;
+					break;
+				case nano::block_type::state:
+					to_read = nano::state_block::size;
+					break;
+				default:
+					debug_assert (false);
+					break;
+			}
+			boost::system::error_code ec;
+			auto read = connection->socket->async_read (connection->receive_buffer, to_read, yield[ec]);
 			if (!ec)
 			{
-				this_l->received_type ();
+				received_block (type_a, read);
 			}
 			else
 			{
-				if (this_l->connection->node->config.logging.bulk_pull_logging ())
+				if (connection->node->config.logging.bulk_pull_logging ())
 				{
-					this_l->connection->node->logger.try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
+					connection->node->logger.try_log (boost::str (boost::format ("Error bulk receiving block: %1%") % ec.message ()));
 				}
-				this_l->connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
-				this_l->network_error = true;
+				connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
+				network_error = true;
 			}
-		});
-	}
-}
-
-void nano::bulk_pull_client::received_type ()
-{
-	auto this_l (shared_from_this ());
-	nano::block_type type (static_cast<nano::block_type> (connection->receive_buffer->data ()[0]));
-
-	if (auto socket_l = connection->channel->socket.lock ())
-	{
-		switch (type)
-		{
-			case nano::block_type::send:
-			{
-				socket_l->async_read (connection->receive_buffer, nano::send_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-					this_l->received_block (ec, size_a, type);
-				});
-				break;
-			}
-			case nano::block_type::receive:
-			{
-				socket_l->async_read (connection->receive_buffer, nano::receive_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-					this_l->received_block (ec, size_a, type);
-				});
-				break;
-			}
-			case nano::block_type::open:
-			{
-				socket_l->async_read (connection->receive_buffer, nano::open_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-					this_l->received_block (ec, size_a, type);
-				});
-				break;
-			}
-			case nano::block_type::change:
-			{
-				socket_l->async_read (connection->receive_buffer, nano::change_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-					this_l->received_block (ec, size_a, type);
-				});
-				break;
-			}
-			case nano::block_type::state:
-			{
-				socket_l->async_read (connection->receive_buffer, nano::state_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-					this_l->received_block (ec, size_a, type);
-				});
-				break;
-			}
-			case nano::block_type::not_a_block:
-			{
-				// Avoid re-using slow peers, or peers that sent the wrong blocks.
-				if (!connection->pending_stop && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
-				{
-					connection->connections->pool_connection (connection);
-				}
-				break;
-			}
-			default:
-			{
-				if (connection->node->config.logging.network_packet_logging ())
-				{
-					connection->node->logger.try_log (boost::str (boost::format ("Unknown type received as block type: %1%") % static_cast<int> (type)));
-				}
-				break;
-			}
+			break;
 		}
-	}
-}
-
-void nano::bulk_pull_client::received_block (boost::system::error_code const & ec, size_t size_a, nano::block_type type_a)
-{
-	if (!ec)
-	{
-		nano::bufferstream stream (connection->receive_buffer->data (), size_a);
-		std::shared_ptr<nano::block> block (nano::deserialize_block (stream, type_a));
-		if (block != nullptr && !nano::work_validate_entry (*block))
+		case nano::block_type::not_a_block:
 		{
-			auto hash (block->hash ());
-			if (connection->node->config.logging.bulk_pull_logging ())
-			{
-				std::string block_l;
-				block->serialize_json (block_l, connection->node->config.logging.single_line_record ());
-				connection->node->logger.try_log (boost::str (boost::format ("Pulled block %1% %2%") % hash.to_string () % block_l));
-			}
-			// Is block expected?
-			bool block_expected (false);
-			// Unconfirmed head is used only for lazy destinations if legacy bootstrap is not available, see nano::bootstrap_attempt::lazy_destinations_increment (...)
-			bool unconfirmed_account_head (connection->node->flags.disable_legacy_bootstrap && pull_blocks == 0 && pull.retry_limit != std::numeric_limits<unsigned>::max () && expected == pull.account_or_head && block->account () == pull.account_or_head);
-			if (hash == expected || unconfirmed_account_head)
-			{
-				expected = block->previous ();
-				block_expected = true;
-			}
-			else
-			{
-				unexpected_count++;
-			}
-			if (pull_blocks == 0 && block_expected)
-			{
-				known_account = block->account ();
-			}
-			if (connection->block_count++ == 0)
-			{
-				connection->set_start_time (std::chrono::steady_clock::now ());
-			}
-			attempt->total_blocks++;
-			bool stop_pull (attempt->process_block (block, known_account, pull_blocks, pull.count, block_expected, pull.retry_limit));
-			pull_blocks++;
-			if (!stop_pull && !connection->hard_stop.load ())
-			{
-				/* Process block in lazy pull if not stopped
-				Stop usual pull request with unexpected block & more than 16k blocks processed
-				to prevent spam */
-				if (attempt->mode != nano::bootstrap_mode::legacy || unexpected_count < 16384)
-				{
-					throttled_receive_block ();
-				}
-			}
-			else if (stop_pull && block_expected)
+			// Avoid re-using slow peers, or peers that sent the wrong blocks.
+			if (!connection->pending_stop && (expected == pull.end || (pull.count != 0 && pull.count == pull_blocks)))
 			{
 				connection->connections->pool_connection (connection);
 			}
+			break;
 		}
-		else if (block == nullptr)
+		default:
 		{
-			if (connection->node->config.logging.bulk_pull_logging ())
+			if (connection->node->config.logging.network_packet_logging ())
 			{
-				connection->node->logger.try_log ("Error deserializing block received from pull request");
+				connection->node->logger.try_log (boost::str (boost::format ("Unknown type received as block type: %1%") % static_cast<int> (type_a)));
 			}
-			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_deserialize_receive_block, nano::stat::dir::in);
-		}
-		else // Work invalid
-		{
-			if (connection->node->config.logging.bulk_pull_logging ())
-			{
-				connection->node->logger.try_log (boost::str (boost::format ("Insufficient work for bulk pull block: %1%") % block->hash ().to_string ()));
-			}
-			connection->node->stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
+			break;
 		}
 	}
-	else
+}
+
+void nano::bulk_pull_client::received_block (nano::block_type type_a, size_t size_a)
+{
+	nano::bufferstream stream (connection->receive_buffer->data (), size_a);
+	std::shared_ptr<nano::block> block (nano::deserialize_block (stream, type_a));
+	if (block != nullptr && !nano::work_validate_entry (*block))
+	{
+		auto hash (block->hash ());
+		if (connection->node->config.logging.bulk_pull_logging ())
+		{
+			std::string block_l;
+			block->serialize_json (block_l, connection->node->config.logging.single_line_record ());
+			connection->node->logger.try_log (boost::str (boost::format ("Pulled block %1% %2%") % hash.to_string () % block_l));
+		}
+		// Is block expected?
+		bool block_expected (false);
+		// Unconfirmed head is used only for lazy destinations if legacy bootstrap is not available, see nano::bootstrap_attempt::lazy_destinations_increment (...)
+		bool unconfirmed_account_head (connection->node->flags.disable_legacy_bootstrap && pull_blocks == 0 && pull.retry_limit != std::numeric_limits<unsigned>::max () && expected == pull.account_or_head && block->account () == pull.account_or_head);
+		if (hash == expected || unconfirmed_account_head)
+		{
+			expected = block->previous ();
+			block_expected = true;
+		}
+		else
+		{
+			unexpected_count++;
+		}
+		if (pull_blocks == 0 && block_expected)
+		{
+			known_account = block->account ();
+		}
+		if (connection->block_count++ == 0)
+		{
+			connection->set_start_time (std::chrono::steady_clock::now ());
+		}
+		attempt->total_blocks++;
+		bool stop_pull (attempt->process_block (block, known_account, pull_blocks, pull.count, block_expected, pull.retry_limit));
+		pull_blocks++;
+		if (!stop_pull && !connection->hard_stop.load ())
+		{
+			/* Process block in lazy pull if not stopped
+			Stop usual pull request with unexpected block & more than 16k blocks processed
+			to prevent spam */
+			if (attempt->mode != nano::bootstrap_mode::legacy || unexpected_count < 16384)
+			{
+				throttled_receive_block ();
+			}
+		}
+		else if (stop_pull && block_expected)
+		{
+			connection->connections->pool_connection (connection);
+		}
+	}
+	else if (block == nullptr)
 	{
 		if (connection->node->config.logging.bulk_pull_logging ())
 		{
-			connection->node->logger.try_log (boost::str (boost::format ("Error bulk receiving block: %1%") % ec.message ()));
+			connection->node->logger.try_log ("Error deserializing block received from pull request");
 		}
-		connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_receive_block_failure, nano::stat::dir::in);
-		network_error = true;
+		connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_deserialize_receive_block, nano::stat::dir::in);
+	}
+	else // Work invalid
+	{
+		if (connection->node->config.logging.bulk_pull_logging ())
+		{
+			connection->node->logger.try_log (boost::str (boost::format ("Insufficient work for bulk pull block: %1%") % block->hash ().to_string ()));
+		}
+		connection->node->stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 	}
 }
 
@@ -316,12 +308,14 @@ void nano::bulk_pull_account_client::request ()
 	{
 		connection->node->logger.always_log (boost::str (boost::format ("%1% accounts in pull queue") % attempt->wallet_size ()));
 	}
-	auto this_l (shared_from_this ());
 	connection->channel->send (
-	req, [this_l](boost::system::error_code const & ec, size_t size_a) {
+	req, [this_l = shared_from_this ()](boost::system::error_code const & ec, size_t size_a) {
 		if (!ec)
 		{
-			this_l->receive_pending ();
+			this_l->connection->node->spawn (
+			[this_l](boost::asio::yield_context yield) {
+				this_l->receive_pending (yield);
+			});
 		}
 		else
 		{
@@ -336,74 +330,56 @@ void nano::bulk_pull_account_client::request ()
 	nano::buffer_drop_policy::no_limiter_drop);
 }
 
-void nano::bulk_pull_account_client::receive_pending ()
+void nano::bulk_pull_account_client::receive_pending (boost::asio::yield_context yield)
 {
-	auto this_l (shared_from_this ());
-	size_t size_l (sizeof (nano::uint256_union) + sizeof (nano::uint128_union));
-	if (auto socket_l = connection->channel->socket.lock ())
+	size_t constexpr size_l{ sizeof (nano::uint256_union) + sizeof (nano::uint128_union) };
+	size_t read;
+	do
 	{
-		socket_l->async_read (connection->receive_buffer, size_l, [this_l, size_l](boost::system::error_code const & ec, size_t size_a) {
-			// An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
-			// we simply get a size of 0.
-			if (size_a == size_l)
+		boost::system::error_code ec;
+		read = connection->socket->async_read (connection->receive_buffer, size_l, yield[ec]);
+		if (!ec && read == size_l)
+		{
+			nano::block_hash pending;
+			nano::amount balance;
+			nano::bufferstream stream (connection->receive_buffer->data (), size_l);
+			auto error = nano::try_read (stream, pending) || nano::try_read (stream, balance);
+			(void)error;
+			debug_assert (!error);
+			if (pull_blocks == 0 || !pending.is_zero ())
 			{
-				if (!ec)
+				if (pull_blocks == 0 || balance.number () >= connection->node->config.receive_minimum.number ())
 				{
-					nano::block_hash pending;
-					nano::bufferstream frontier_stream (this_l->connection->receive_buffer->data (), sizeof (nano::uint256_union));
-					auto error1 (nano::try_read (frontier_stream, pending));
-					(void)error1;
-					debug_assert (!error1);
-					nano::amount balance;
-					nano::bufferstream balance_stream (this_l->connection->receive_buffer->data () + sizeof (nano::uint256_union), sizeof (nano::uint128_union));
-					auto error2 (nano::try_read (balance_stream, balance));
-					(void)error2;
-					debug_assert (!error2);
-					if (this_l->pull_blocks == 0 || !pending.is_zero ())
+					pull_blocks++;
+					if (!pending.is_zero ())
 					{
-						if (this_l->pull_blocks == 0 || balance.number () >= this_l->connection->node->config.receive_minimum.number ())
+						if (!connection->node->ledger.block_exists (pending))
 						{
-							this_l->pull_blocks++;
-							{
-								if (!pending.is_zero ())
-								{
-									if (!this_l->connection->node->ledger.block_exists (pending))
-									{
-										this_l->connection->node->bootstrap_initiator.bootstrap_lazy (pending, false, false);
-									}
-								}
-							}
-							this_l->receive_pending ();
+							connection->node->bootstrap_initiator.bootstrap_lazy (pending, false, false);
 						}
-						else
-						{
-							this_l->attempt->requeue_pending (this_l->account);
-						}
-					}
-					else
-					{
-						this_l->connection->connections->pool_connection (this_l->connection);
 					}
 				}
 				else
 				{
-					this_l->attempt->requeue_pending (this_l->account);
-					if (this_l->connection->node->config.logging.network_logging ())
-					{
-						this_l->connection->node->logger.try_log (boost::str (boost::format ("Error while receiving bulk pull account frontier %1%") % ec.message ()));
-					}
+					read = 0;
+					attempt->requeue_pending (account);
 				}
 			}
 			else
 			{
-				this_l->attempt->requeue_pending (this_l->account);
-				if (this_l->connection->node->config.logging.network_message_logging ())
-				{
-					this_l->connection->node->logger.try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % size_l % size_a));
-				}
+				read = 0;
+				connection->connections->pool_connection (connection);
 			}
-		});
-	}
+		}
+		else if (ec)
+		{
+			attempt->requeue_pending (account);
+			if (connection->node->config.logging.network_logging ())
+			{
+				connection->node->logger.try_log (boost::str (boost::format ("Error while receiving bulk pull account frontier %1%") % ec.message ()));
+			}
+		}
+	} while (read == size_l);
 }
 
 /**

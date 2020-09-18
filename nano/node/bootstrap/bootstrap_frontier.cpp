@@ -23,7 +23,10 @@ void nano::frontier_req_client::run ()
 	request, [this_l](boost::system::error_code const & ec, size_t size_a) {
 		if (!ec)
 		{
-			this_l->receive_frontier ();
+			this_l->connection->node->spawn (
+			[this_l](boost::asio::yield_context yield) {
+				this_l->receive_frontiers (yield);
+			});
 		}
 		else
 		{
@@ -50,27 +53,121 @@ nano::frontier_req_client::~frontier_req_client ()
 {
 }
 
-void nano::frontier_req_client::receive_frontier ()
+void nano::frontier_req_client::receive_frontiers (boost::asio::yield_context yield)
 {
-	auto this_l (shared_from_this ());
-	if (auto socket_l = connection->channel->socket.lock ())
+	start_time = std::chrono::steady_clock::now ();
+	nano::account account{ 0 };
+	do
 	{
-		socket_l->async_read (connection->receive_buffer, nano::frontier_req_client::size_frontier, [this_l](boost::system::error_code const & ec, size_t size_a) {
-			// An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
-			// we simply get a size of 0.
-			if (size_a == nano::frontier_req_client::size_frontier)
+		boost::system::error_code ec;
+		auto read = connection->socket->async_read (connection->receive_buffer, nano::frontier_req_client::size_frontier, yield[ec]);
+		// An issue with asio is that sometimes, instead of reporting a bad file descriptor during disconnect,
+		// we simply get a size of 0.
+		if (!ec && read == nano::frontier_req_client::size_frontier)
+		{
+			nano::block_hash latest;
+			nano::bufferstream stream{ connection->receive_buffer->data (), nano::frontier_req_client::size_frontier };
+			auto error = nano::try_read (stream, account) || nano::try_read (stream, latest);
+			(void)error;
+			debug_assert (!error);
+			++count;
+			std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>> (std::chrono::steady_clock::now () - start_time);
+
+			double elapsed_sec = std::max (time_span.count (), nano::bootstrap_limits::bootstrap_minimum_elapsed_seconds_blockrate);
+			double blocks_per_sec = static_cast<double> (count) / elapsed_sec;
+			if (elapsed_sec > nano::bootstrap_limits::bootstrap_connection_warmup_time_sec && blocks_per_sec < nano::bootstrap_limits::bootstrap_minimum_frontier_blocks_per_sec)
 			{
-				this_l->received_frontier (ec, size_a);
+				connection->node->logger.try_log (boost::str (boost::format ("Aborting frontier req because it was too slow")));
+				promise.set_value (true);
+				return;
+			}
+			if (attempt->should_log ())
+			{
+				connection->node->logger.always_log (boost::str (boost::format ("Received %1% frontiers from %2%") % std::to_string (count) % connection->channel->to_string ()));
+			}
+			if (!account.is_zero ())
+			{
+				while (!current.is_zero () && current < account)
+				{
+					// We know about an account they don't.
+					unsynced (frontier, 0);
+					next ();
+				}
+				if (!current.is_zero ())
+				{
+					if (account == current)
+					{
+						if (latest == frontier)
+						{
+							// In sync
+						}
+						else
+						{
+							if (connection->node->ledger.block_exists (latest))
+							{
+								// We know about a block they don't.
+								unsynced (frontier, latest);
+							}
+							else
+							{
+								attempt->add_frontier (nano::pull_info (account, latest, frontier, attempt->incremental_id, 0, connection->node->network_params.bootstrap.frontier_retry_limit));
+								// Either we're behind or there's a fork we differ on
+								// Either way, bulk pushing will probably not be effective
+								bulk_push_cost += 5;
+							}
+						}
+						next ();
+					}
+					else
+					{
+						debug_assert (account < current);
+						attempt->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt->incremental_id, 0, connection->node->network_params.bootstrap.frontier_retry_limit));
+					}
+				}
+				else
+				{
+					attempt->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt->incremental_id, 0, connection->node->network_params.bootstrap.frontier_retry_limit));
+				}
 			}
 			else
 			{
-				if (this_l->connection->node->config.logging.network_message_logging ())
+				while (!current.is_zero ())
 				{
-					this_l->connection->node->logger.try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % nano::frontier_req_client::size_frontier % size_a));
+					// We know about an account they don't.
+					unsynced (frontier, 0);
+					next ();
+				}
+				if (connection->node->config.logging.bulk_pull_logging ())
+				{
+					connection->node->logger.try_log ("Bulk push cost: ", bulk_push_cost);
+				}
+				{
+					try
+					{
+						promise.set_value (false);
+					}
+					catch (std::future_error &)
+					{
+					}
+					connection->connections->pool_connection (connection);
 				}
 			}
-		});
-	}
+		}
+		else if (ec)
+		{
+			if (connection->node->config.logging.network_logging ())
+			{
+				connection->node->logger.try_log (boost::str (boost::format ("Error while receiving frontier %1%") % ec.message ()));
+			}
+		}
+		else
+		{
+			if (connection->node->config.logging.network_message_logging ())
+			{
+				connection->node->logger.try_log (boost::str (boost::format ("Invalid size: expected %1%, got %2%") % nano::frontier_req_client::size_frontier % read));
+			}
+		}
+	} while (!account.is_zero ());
 }
 
 void nano::frontier_req_client::unsynced (nano::block_hash const & head, nano::block_hash const & end)
@@ -85,118 +182,6 @@ void nano::frontier_req_client::unsynced (nano::block_hash const & head, nano::b
 		else
 		{
 			bulk_push_cost += 1;
-		}
-	}
-}
-
-void nano::frontier_req_client::received_frontier (boost::system::error_code const & ec, size_t size_a)
-{
-	if (!ec)
-	{
-		debug_assert (size_a == nano::frontier_req_client::size_frontier);
-		nano::account account;
-		nano::bufferstream account_stream (connection->receive_buffer->data (), sizeof (account));
-		auto error1 (nano::try_read (account_stream, account));
-		(void)error1;
-		debug_assert (!error1);
-		nano::block_hash latest;
-		nano::bufferstream latest_stream (connection->receive_buffer->data () + sizeof (account), sizeof (latest));
-		auto error2 (nano::try_read (latest_stream, latest));
-		(void)error2;
-		debug_assert (!error2);
-		if (count == 0)
-		{
-			start_time = std::chrono::steady_clock::now ();
-		}
-		++count;
-		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>> (std::chrono::steady_clock::now () - start_time);
-
-		double elapsed_sec = std::max (time_span.count (), nano::bootstrap_limits::bootstrap_minimum_elapsed_seconds_blockrate);
-		double blocks_per_sec = static_cast<double> (count) / elapsed_sec;
-		if (elapsed_sec > nano::bootstrap_limits::bootstrap_connection_warmup_time_sec && blocks_per_sec < nano::bootstrap_limits::bootstrap_minimum_frontier_blocks_per_sec)
-		{
-			connection->node->logger.try_log (boost::str (boost::format ("Aborting frontier req because it was too slow")));
-			promise.set_value (true);
-			return;
-		}
-		if (attempt->should_log ())
-		{
-			connection->node->logger.always_log (boost::str (boost::format ("Received %1% frontiers from %2%") % std::to_string (count) % connection->channel->to_string ()));
-		}
-		if (!account.is_zero ())
-		{
-			while (!current.is_zero () && current < account)
-			{
-				// We know about an account they don't.
-				unsynced (frontier, 0);
-				next ();
-			}
-			if (!current.is_zero ())
-			{
-				if (account == current)
-				{
-					if (latest == frontier)
-					{
-						// In sync
-					}
-					else
-					{
-						if (connection->node->ledger.block_exists (latest))
-						{
-							// We know about a block they don't.
-							unsynced (frontier, latest);
-						}
-						else
-						{
-							attempt->add_frontier (nano::pull_info (account, latest, frontier, attempt->incremental_id, 0, connection->node->network_params.bootstrap.frontier_retry_limit));
-							// Either we're behind or there's a fork we differ on
-							// Either way, bulk pushing will probably not be effective
-							bulk_push_cost += 5;
-						}
-					}
-					next ();
-				}
-				else
-				{
-					debug_assert (account < current);
-					attempt->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt->incremental_id, 0, connection->node->network_params.bootstrap.frontier_retry_limit));
-				}
-			}
-			else
-			{
-				attempt->add_frontier (nano::pull_info (account, latest, nano::block_hash (0), attempt->incremental_id, 0, connection->node->network_params.bootstrap.frontier_retry_limit));
-			}
-			receive_frontier ();
-		}
-		else
-		{
-			while (!current.is_zero ())
-			{
-				// We know about an account they don't.
-				unsynced (frontier, 0);
-				next ();
-			}
-			if (connection->node->config.logging.bulk_pull_logging ())
-			{
-				connection->node->logger.try_log ("Bulk push cost: ", bulk_push_cost);
-			}
-			{
-				try
-				{
-					promise.set_value (false);
-				}
-				catch (std::future_error &)
-				{
-				}
-				connection->connections->pool_connection (connection);
-			}
-		}
-	}
-	else
-	{
-		if (connection->node->config.logging.network_logging ())
-		{
-			connection->node->logger.try_log (boost::str (boost::format ("Error while receiving frontier %1%") % ec.message ()));
 		}
 	}
 }

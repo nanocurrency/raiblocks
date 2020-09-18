@@ -33,8 +33,8 @@ public:
 	void request ();
 	void receive_block ();
 	void throttled_receive_block ();
-	void received_type ();
-	void received_block (boost::system::error_code const &, size_t, nano::block_type);
+	void received_type (nano::block_type type_a, boost::asio::yield_context yield);
+	void received_block (nano::block_type type_a, size_t size_a);
 	nano::block_hash first ();
 	std::shared_ptr<nano::bootstrap_client> connection;
 	std::shared_ptr<nano::bootstrap_attempt> attempt;
@@ -51,7 +51,7 @@ public:
 	bulk_pull_account_client (std::shared_ptr<nano::bootstrap_client>, std::shared_ptr<nano::bootstrap_attempt>, nano::account const &);
 	~bulk_pull_account_client ();
 	void request ();
-	void receive_pending ();
+	void receive_pending (boost::asio::yield_context yield);
 	std::shared_ptr<nano::bootstrap_client> connection;
 	std::shared_ptr<nano::bootstrap_attempt> attempt;
 	nano::account account;

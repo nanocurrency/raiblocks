@@ -5,6 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include <boost/asio/spawn.hpp>
+
 using namespace std::chrono_literals;
 
 TEST (socket, drop_policy)
@@ -22,15 +24,15 @@ TEST (socket, drop_policy)
 	// The total number of drops should thus be 1 (the socket allows doubling the queue size for no_socket_drop)
 	size_t max_write_queue_size = 0;
 	{
-		auto client_dummy (std::make_shared<nano::socket> (node, boost::none, nano::socket::concurrency::multi_writer));
-		max_write_queue_size = client_dummy->get_max_write_queue_size ();
+		auto client_dummy (std::make_shared<nano::socket> (*node));
+		max_write_queue_size = client_dummy->queue_size_max;
 	}
 
 	auto func = [&](size_t total_message_count, nano::buffer_drop_policy drop_policy) {
 		auto server_port (nano::get_available_port ());
-		boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v4::any (), server_port);
+		boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v6::any (), server_port);
 
-		auto server_socket (std::make_shared<nano::server_socket> (node, endpoint, 1, nano::socket::concurrency::multi_writer));
+		auto server_socket (std::make_shared<nano::server_socket> (*node, endpoint, 1));
 		boost::system::error_code ec;
 		server_socket->start (ec);
 		ASSERT_FALSE (ec);
@@ -41,22 +43,27 @@ TEST (socket, drop_policy)
 			return true;
 		});
 
-		auto client (std::make_shared<nano::socket> (node, boost::none, nano::socket::concurrency::multi_writer));
+		auto client (std::make_shared<nano::socket> (*node));
+		nano::transport::channel_tcp channel{ *node, client };
 		nano::util::counted_completion write_completion (total_message_count);
 
-		client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v4::loopback (), server_port),
-		[client, total_message_count, node, &write_completion, &drop_policy](boost::system::error_code const & ec_a) {
+		node->spawn (
+		[client, &channel, total_message_count, node, &write_completion, &drop_policy, server_port](boost::asio::yield_context yield) mutable {
+			boost::system::error_code ec;
+			client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v6::loopback (), server_port), yield[ec]);
 			for (int i = 0; i < total_message_count; i++)
 			{
 				std::vector<uint8_t> buff (1);
-				client->async_write (
-				nano::shared_const_buffer (std::move (buff)), [&write_completion](boost::system::error_code const & ec, size_t size_a) {
+				channel.send_buffer (
+				nano::shared_const_buffer (std::move (buff)), [&write_completion, client](boost::system::error_code const & ec, size_t size_a) mutable {
+					client.reset ();
 					write_completion.increment ();
 				},
 				drop_policy);
 			}
 		});
-		write_completion.await_count_for (std::chrono::seconds (5));
+		ASSERT_FALSE (write_completion.await_count_for (std::chrono::seconds (5)));
+		ASSERT_EQ (1, client.use_count ());
 	};
 
 	func (max_write_queue_size * 2 + 1, nano::buffer_drop_policy::no_socket_drop);
@@ -123,7 +130,7 @@ TEST (socket, concurrent_writes)
 
 	boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v4::any (), 25000);
 
-	auto server_socket (std::make_shared<nano::server_socket> (node, endpoint, max_connections, nano::socket::concurrency::multi_writer));
+	auto server_socket (std::make_shared<nano::server_socket> (*node, endpoint, max_connections));
 	boost::system::error_code ec;
 	server_socket->start (ec);
 	ASSERT_FALSE (ec);
@@ -148,13 +155,15 @@ TEST (socket, concurrent_writes)
 	std::vector<std::shared_ptr<nano::socket>> clients;
 	for (unsigned i = 0; i < client_count; i++)
 	{
-		auto client (std::make_shared<nano::socket> (node, boost::none, nano::socket::concurrency::multi_writer));
+		auto client (std::make_shared<nano::socket> (*node));
 		clients.push_back (client);
-		client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v4::loopback (), 25000),
-		[&connection_count_completion](boost::system::error_code const & ec_a) {
-			if (ec_a)
+		node->spawn (
+		[client, &connection_count_completion](boost::asio::yield_context yield) {
+			boost::system::error_code ec;
+			client->async_connect (boost::asio::ip::tcp::endpoint (boost::asio::ip::address_v4::loopback (), 25000), yield[ec]);
+			if (ec)
 			{
-				std::cerr << "async_connect: " << ec_a.message () << std::endl;
+				std::cerr << "async_connect: " << ec.message () << std::endl;
 			}
 			else
 			{
@@ -204,4 +213,110 @@ TEST (socket, concurrent_writes)
 	{
 		t.join ();
 	}
+}
+
+TEST (socket_yield, context)
+{
+	nano::system system{ 1 };
+	auto node = system.nodes[0];
+	boost::asio::ip::tcp::endpoint endpoint{ boost::asio::ip::address_v6::loopback (), nano::get_available_port () };
+	std::promise<uint8_t> promise;
+	auto future = promise.get_future ();
+	boost::asio::spawn (system.io_ctx, [&promise, &endpoint, node](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		ASSERT_FALSE (ec);
+		auto socket0 = std::make_shared<nano::server_socket> (*node, endpoint, 1);
+		socket0->start (ec);
+		ASSERT_FALSE (ec);
+		auto socket1 = std::make_shared<nano::socket> (*node);
+		socket0->async_accept (*socket1, yield[ec]);
+		ASSERT_FALSE (ec);
+		auto buffer = std::make_shared<std::vector<uint8_t>> (1);
+		socket1->async_read (buffer, 1, yield[ec]);
+		ASSERT_FALSE (ec);
+		promise.set_value (buffer->operator[] (0));
+	});
+	boost::asio::spawn (system.io_ctx, [&endpoint, node](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		ASSERT_FALSE (ec);
+		auto socket = std::make_shared<nano::socket> (*node);
+		socket->async_connect (endpoint, yield[ec]);
+		ASSERT_FALSE (ec);
+		auto buffer = std::make_shared<std::vector<uint8_t>> (1);
+		buffer->operator[] (0) = 42;
+		auto written = socket->async_write (nano::shared_const_buffer{ buffer }, yield[ec]);
+		ASSERT_FALSE (ec);
+		ASSERT_EQ (1, written);
+	});
+	ASSERT_TIMELY (1s, future.wait_for (std::chrono::milliseconds (0)) == std::future_status::ready);
+	ASSERT_EQ (42, future.get ());
+}
+
+TEST (socket_yied, async_connect_fail)
+{
+	nano::system system{ 1 };
+	auto node = system.nodes[0];
+	std::promise<boost::system::error_code> promise;
+	auto future = promise.get_future ();
+	boost::asio::spawn (system.io_ctx, [&promise, node](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		auto socket = std::make_shared<nano::socket> (*node);
+		socket->async_connect ({ boost::asio::ip::address_v6::loopback (), 0 }, yield[ec]);
+		promise.set_value (ec);
+	});
+	ASSERT_TIMELY (1s, future.wait_for (std::chrono::milliseconds (0)) == std::future_status::ready);
+	ASSERT_TRUE (future.get ());
+}
+
+TEST (socket_yield, async_read_fail)
+{
+	nano::system system{ 1 };
+	auto node = system.nodes[0];
+	std::promise<boost::system::error_code> promise;
+	auto future = promise.get_future ();
+	boost::asio::spawn (system.io_ctx, [&promise, node](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		auto socket = std::make_shared<nano::socket> (*node);
+		auto buffer = std::make_shared<std::vector<uint8_t>> (1);
+		socket->async_read (buffer, 1, yield[ec]);
+		promise.set_value (ec);
+	});
+	ASSERT_TIMELY (1s, future.wait_for (std::chrono::milliseconds (0)) == std::future_status::ready);
+	ASSERT_TRUE (future.get ());
+}
+
+TEST (socket_yield, async_write_fail)
+{
+	nano::system system{ 1 };
+	auto node = system.nodes[0];
+	std::promise<boost::system::error_code> promise;
+	auto future = promise.get_future ();
+	boost::asio::spawn (system.io_ctx, [&promise, node](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		auto socket = std::make_shared<nano::socket> (*node);
+		auto buffer = std::make_shared<std::vector<uint8_t>> (1);
+		socket->async_write (nano::shared_const_buffer{ buffer }, yield[ec]);
+		promise.set_value (ec);
+	});
+	ASSERT_TIMELY (1s, future.wait_for (std::chrono::milliseconds (0)) == std::future_status::ready);
+	ASSERT_TRUE (future.get ());
+	ASSERT_EQ (0, node->stats.count (nano::stat::type::traffic_tcp, nano::stat::dir::out));
+}
+
+TEST (socket_yield, async_write_closed_fail)
+{
+	nano::system system{ 1 };
+	auto node = system.nodes[0];
+	std::promise<boost::system::error_code> promise;
+	auto future = promise.get_future ();
+	boost::asio::spawn (system.io_ctx, [&promise, node](boost::asio::yield_context yield) {
+		boost::system::error_code ec;
+		auto socket = std::make_shared<nano::socket> (*node);
+		socket->close ();
+		auto buffer = std::make_shared<std::vector<uint8_t>> (1);
+		socket->async_write (nano::shared_const_buffer{ buffer }, yield[ec]);
+		promise.set_value (ec);
+	});
+	ASSERT_TIMELY (1s, future.wait_for (std::chrono::milliseconds (0)) == std::future_status::ready);
+	ASSERT_TRUE (future.get ().value ());
 }

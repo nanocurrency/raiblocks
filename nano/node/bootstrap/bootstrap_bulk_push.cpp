@@ -122,7 +122,10 @@ void nano::bulk_push_server::throttled_receive ()
 {
 	if (!connection->node->block_processor.half_full ())
 	{
-		receive ();
+		connection->node->spawn (
+		[this_l = shared_from_this ()](boost::asio::yield_context yield) {
+			this_l->receive (yield);
+		});
 	}
 	else
 	{
@@ -136,7 +139,7 @@ void nano::bulk_push_server::throttled_receive ()
 	}
 }
 
-void nano::bulk_push_server::receive ()
+void nano::bulk_push_server::receive (boost::asio::yield_context yield)
 {
 	if (connection->node->bootstrap_initiator.in_progress ())
 	{
@@ -147,110 +150,104 @@ void nano::bulk_push_server::receive ()
 	}
 	else
 	{
-		auto this_l (shared_from_this ());
-		connection->socket->async_read (receive_buffer, 1, [this_l](boost::system::error_code const & ec, size_t size_a) {
-			if (!ec)
+		boost::system::error_code ec;
+		connection->socket->async_read (receive_buffer, 1, yield[ec]);
+		if (!ec)
+		{
+			nano::block_type type (static_cast<nano::block_type> (receive_buffer->data ()[0]));
+			received_type (type, yield);
+		}
+		else
+		{
+			if (connection->node->config.logging.bulk_pull_logging ())
 			{
-				this_l->received_type ();
+				connection->node->logger.try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
 			}
-			else
-			{
-				if (this_l->connection->node->config.logging.bulk_pull_logging ())
-				{
-					this_l->connection->node->logger.try_log (boost::str (boost::format ("Error receiving block type: %1%") % ec.message ()));
-				}
-			}
-		});
+		}
 	}
 }
 
-void nano::bulk_push_server::received_type ()
+void nano::bulk_push_server::received_type (nano::block_type type_a, boost::asio::yield_context yield)
 {
-	auto this_l (shared_from_this ());
-	nano::block_type type (static_cast<nano::block_type> (receive_buffer->data ()[0]));
-	switch (type)
+	switch (type_a)
 	{
 		case nano::block_type::send:
-		{
-			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::send, nano::stat::dir::in);
-			connection->socket->async_read (receive_buffer, nano::send_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
 		case nano::block_type::receive:
-		{
-			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::receive, nano::stat::dir::in);
-			connection->socket->async_read (receive_buffer, nano::receive_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
 		case nano::block_type::open:
-		{
-			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::open, nano::stat::dir::in);
-			connection->socket->async_read (receive_buffer, nano::open_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
 		case nano::block_type::change:
-		{
-			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::change, nano::stat::dir::in);
-			connection->socket->async_read (receive_buffer, nano::change_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
 		case nano::block_type::state:
 		{
-			connection->node->stats.inc (nano::stat::type::bootstrap, nano::stat::detail::state_block, nano::stat::dir::in);
-			connection->socket->async_read (receive_buffer, nano::state_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
+			size_t to_read = 0;
+			nano::stat::detail stat = nano::stat::detail::all;
+			switch (type_a)
+			{
+				case nano::block_type::send:
+					to_read = nano::send_block::size;
+					stat = nano::stat::detail::send;
+					break;
+				case nano::block_type::receive:
+					to_read = nano::receive_block::size;
+					stat = nano::stat::detail::receive;
+					break;
+				case nano::block_type::open:
+					to_read = nano::open_block::size;
+					stat = nano::stat::detail::open;
+					break;
+				case nano::block_type::change:
+					to_read = nano::change_block::size;
+					stat = nano::stat::detail::change;
+					break;
+				case nano::block_type::state:
+					to_read = nano::state_block::size;
+					stat = nano::stat::detail::state_block;
+					break;
+				default:
+					debug_assert (false);
+					break;
+			}
+			connection->node->stats.inc (nano::stat::type::bootstrap, stat, nano::stat::dir::in);
+			boost::system::error_code ec;
+			auto read = connection->socket->async_read (receive_buffer, to_read, yield[ec]);
+			if (!ec)
+			{
+				received_block (type_a, read);
+			}
 			break;
 		}
 		case nano::block_type::not_a_block:
-		{
 			connection->finish_request ();
 			break;
-		}
 		default:
-		{
 			if (connection->node->config.logging.network_packet_logging ())
 			{
 				connection->node->logger.try_log ("Unknown type received as block type");
 			}
 			break;
-		}
 	}
 }
 
-void nano::bulk_push_server::received_block (boost::system::error_code const & ec, size_t size_a, nano::block_type type_a)
+void nano::bulk_push_server::received_block (nano::block_type type_a, size_t size_a)
 {
-	if (!ec)
+	nano::bufferstream stream{ receive_buffer->data (), size_a };
+	auto block = nano::deserialize_block (stream, type_a);
+	if (block != nullptr && !nano::work_validate_entry (*block))
 	{
-		nano::bufferstream stream (receive_buffer->data (), size_a);
-		auto block (nano::deserialize_block (stream, type_a));
-		if (block != nullptr && !nano::work_validate_entry (*block))
+		connection->node->process_active (std::move (block));
+		throttled_receive ();
+	}
+	else if (block == nullptr)
+	{
+		if (connection->node->config.logging.bulk_pull_logging ())
 		{
-			connection->node->process_active (std::move (block));
-			throttled_receive ();
+			connection->node->logger.try_log ("Error deserializing block received from pull request");
 		}
-		else if (block == nullptr)
+	}
+	else // Work invalid
+	{
+		if (connection->node->config.logging.bulk_pull_logging ())
 		{
-			if (connection->node->config.logging.bulk_pull_logging ())
-			{
-				connection->node->logger.try_log ("Error deserializing block received from pull request");
-			}
+			connection->node->logger.try_log (boost::str (boost::format ("Insufficient work for bulk push block: %1%") % block->hash ().to_string ()));
 		}
-		else // Work invalid
-		{
-			if (connection->node->config.logging.bulk_pull_logging ())
-			{
-				connection->node->logger.try_log (boost::str (boost::format ("Insufficient work for bulk push block: %1%") % block->hash ().to_string ()));
-			}
-			connection->node->stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
-		}
+		connection->node->stats.inc_detail_only (nano::stat::type::error, nano::stat::detail::insufficient_work);
 	}
 }
