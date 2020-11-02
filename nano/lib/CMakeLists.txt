@@ -75,6 +75,8 @@ add_library(
   timestamp_fwd.hpp
   timestamp.hpp
   timestamp.cpp
+  tlsconfig.hpp
+  tlsconfig.cpp
   tomlconfig.hpp
   tomlconfig.cpp
   utility.hpp

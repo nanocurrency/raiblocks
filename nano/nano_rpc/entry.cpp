@@ -1,6 +1,7 @@
 #include <nano/lib/cli.hpp>
 #include <nano/lib/errors.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/node/cli.hpp>
 #include <nano/node/ipc/ipc_server.hpp>
@@ -46,6 +47,20 @@ void run (boost::filesystem::path const & data_path, std::vector<std::string> co
 	if (!error)
 	{
 		logging_init (data_path);
+		nano::logger_mt logger;
+
+		auto tls_config (std::make_shared<nano::tls_config> ());
+		error = nano::read_tls_config_toml (data_path, *tls_config, logger);
+		if (error)
+		{
+			std::cerr << error.get_message () << std::endl;
+			std::exit (1);
+		}
+		else
+		{
+			rpc_config.tls_config = tls_config;
+		}
+
 		boost::asio::io_context io_ctx;
 		try
 		{

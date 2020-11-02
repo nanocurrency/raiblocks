@@ -225,6 +225,7 @@ std::string get_node_toml_config_path (boost::filesystem::path const & data_path
 std::string get_rpc_toml_config_path (boost::filesystem::path const & data_path);
 std::string get_access_toml_config_path (boost::filesystem::path const & data_path);
 std::string get_qtwallet_toml_config_path (boost::filesystem::path const & data_path);
+std::string get_tls_toml_config_path (boost::filesystem::path const & data_path);
 
 /** Checks if we are running inside a valgrind instance */
 bool running_within_valgrind ();

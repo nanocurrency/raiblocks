@@ -3,6 +3,7 @@
 #include <nano/lib/config.hpp>
 #include <nano/lib/errors.hpp>
 
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -19,8 +20,12 @@ namespace nano
 {
 class jsonconfig;
 class tomlconfig;
+class tls_config;
 
-/** Configuration options for RPC TLS */
+/**
+ * Configuration options for RPC TLS.
+ * @note This is deprecated, but kept for a few versions in order to yield a config error message on startup if it's used.
+ */
 class rpc_secure_config final
 {
 public:
@@ -29,6 +34,7 @@ public:
 	nano::error serialize_toml (nano::tomlconfig &) const;
 	nano::error deserialize_toml (nano::tomlconfig &);
 
+private:
 	/** If true, enable TLS */
 	bool enable{ false };
 	/** If true, log certificate verification details */
@@ -84,6 +90,8 @@ public:
 	uint8_t max_json_depth{ 20 };
 	uint64_t max_request_size{ 32 * 1024 * 1024 };
 	nano::rpc_logging_config rpc_logging;
+	/** Optional TLS config */
+	std::shared_ptr<nano::tls_config> tls_config;
 	static unsigned json_version ()
 	{
 		return 1;

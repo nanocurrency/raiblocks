@@ -1,5 +1,6 @@
 #include <nano/boost/process/child.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/nano_node/daemon.hpp>
 #include <nano/node/cli.hpp>
@@ -50,6 +51,19 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 	{
 		config.node.logging.init (data_path);
 		nano::logger_mt logger{ config.node.logging.min_time_between_log_output };
+
+		auto tls_config (std::make_shared<nano::tls_config> ());
+		error = nano::read_tls_config_toml (data_path, *tls_config, logger);
+		if (error)
+		{
+			std::cerr << error.get_message () << std::endl;
+			std::exit (1);
+		}
+		else
+		{
+			config.node.websocket_config.tls_config = tls_config;
+		}
+
 		boost::asio::io_context io_ctx;
 		auto opencl (nano::opencl_work::create (config.opencl_enable, config.opencl, logger));
 		nano::work_pool opencl_work (config.node.work_threads, config.node.pow_sleep_interval, opencl ? [&opencl](nano::work_version const version_a, nano::root const & root_a, uint64_t difficulty_a, std::atomic<int> & ticket_a) {
@@ -115,6 +129,8 @@ void nano_daemon::daemon::run (boost::filesystem::path const & data_path, nano::
 							std::cout << error.get_message () << std::endl;
 							std::exit (1);
 						}
+						rpc_config.tls_config = tls_config;
+
 						rpc_handler = std::make_unique<nano::inprocess_rpc_handler> (*node, ipc_server, config.rpc, [&ipc_server, &alarm, &io_ctx]() {
 							ipc_server.stop ();
 							alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (3), [&io_ctx]() {

@@ -140,6 +140,8 @@ add_library(
   websocket.cpp
   websocketconfig.hpp
   websocketconfig.cpp
+  websocket_stream.hpp
+  websocket_stream.cpp
   write_database_queue.hpp
   write_database_queue.cpp
   xorshift.hpp)
