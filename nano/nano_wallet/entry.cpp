@@ -3,6 +3,7 @@
 #include <nano/lib/errors.hpp>
 #include <nano/lib/rpcconfig.hpp>
 #include <nano/lib/threading.hpp>
+#include <nano/lib/tlsconfig.hpp>
 #include <nano/lib/tomlconfig.hpp>
 #include <nano/lib/utility.hpp>
 #include <nano/lib/walletconfig.hpp>
@@ -99,6 +100,19 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 		config.node.logging.init (data_path);
 		nano::logger_mt logger{ config.node.logging.min_time_between_log_output };
 
+		auto tls_config (std::make_shared<nano::tls_config> ());
+		error = nano::read_tls_config_toml (data_path, *tls_config, logger);
+		if (error)
+		{
+			splash->hide ();
+			show_error (error.get_message ());
+			std::exit (1);
+		}
+		else
+		{
+			config.node.websocket_config.tls_config = tls_config;
+		}
+
 		boost::asio::io_context io_ctx;
 		nano::thread_runner runner (io_ctx, config.node.io_threads);
 
@@ -141,6 +155,7 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 					wallet_config.account = wallet->deterministic_insert (transaction);
 				}
 			}
+
 			debug_assert (wallet->exists (wallet_config.account));
 			write_wallet_config (wallet_config, data_path);
 			node->start ();
@@ -179,8 +194,11 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 					auto error = nano::read_rpc_config_toml (data_path, rpc_config);
 					if (error)
 					{
+						splash->hide ();
 						show_error (error.get_message ());
+						std::exit (1);
 					}
+					rpc_config.tls_config = tls_config;
 					rpc_handler = std::make_unique<nano::inprocess_rpc_handler> (*node, ipc, config.rpc);
 					rpc = nano::get_rpc (io_ctx, rpc_config, *rpc_handler);
 					rpc->start ();

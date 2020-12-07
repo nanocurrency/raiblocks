@@ -3,10 +3,13 @@
 #include <nano/lib/config.hpp>
 #include <nano/lib/errors.hpp>
 
+#include <memory>
+
 namespace nano
 {
 class jsonconfig;
 class tomlconfig;
+class tls_config;
 namespace websocket
 {
 	/** websocket configuration */
@@ -22,6 +25,8 @@ namespace websocket
 		bool enabled{ false };
 		uint16_t port;
 		std::string address;
+		/** Optional TLS config */
+		std::shared_ptr<nano::tls_config> tls_config;
 	};
 }
 }

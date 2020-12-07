@@ -151,7 +151,7 @@ nano::error nano::rpc_config::deserialize_toml (nano::tomlconfig & toml)
 		auto rpc_secure_l (toml.get_optional_child ("secure"));
 		if (rpc_secure_l)
 		{
-			secure.deserialize_toml (*rpc_secure_l);
+			return nano::error ("The RPC secure configuration has moved to config-tls.toml. Please update the configuration.");
 		}
 
 		boost::asio::ip::address_v6 address_l;
