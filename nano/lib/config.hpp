@@ -7,12 +7,9 @@
 #include <array>
 #include <string>
 
-namespace boost
+namespace boost::filesystem
 {
-namespace filesystem
-{
-	class path;
-}
+class path;
 }
 
 #define xstr(a) ver_str (a)
@@ -21,26 +18,26 @@ namespace filesystem
 /**
 * Returns build version information
 */
-const char * const NANO_VERSION_STRING = xstr (TAG_VERSION_STRING);
-const char * const NANO_MAJOR_VERSION_STRING = xstr (MAJOR_VERSION_STRING);
-const char * const NANO_MINOR_VERSION_STRING = xstr (MINOR_VERSION_STRING);
-const char * const NANO_PATCH_VERSION_STRING = xstr (PATCH_VERSION_STRING);
-const char * const NANO_PRE_RELEASE_VERSION_STRING = xstr (PRE_RELEASE_VERSION_STRING);
+char const * const NANO_VERSION_STRING = xstr (TAG_VERSION_STRING);
+char const * const NANO_MAJOR_VERSION_STRING = xstr (MAJOR_VERSION_STRING);
+char const * const NANO_MINOR_VERSION_STRING = xstr (MINOR_VERSION_STRING);
+char const * const NANO_PATCH_VERSION_STRING = xstr (PATCH_VERSION_STRING);
+char const * const NANO_PRE_RELEASE_VERSION_STRING = xstr (PRE_RELEASE_VERSION_STRING);
 
-const char * const BUILD_INFO = xstr (GIT_COMMIT_HASH BOOST_COMPILER) " \"BOOST " xstr (BOOST_VERSION) "\" BUILT " xstr (__DATE__);
+char const * const BUILD_INFO = xstr (GIT_COMMIT_HASH BOOST_COMPILER) " \"BOOST " xstr (BOOST_VERSION) "\" BUILT " xstr (__DATE__);
 
 /** Is TSAN/ASAN dev build */
 #if defined(__has_feature)
 #if __has_feature(thread_sanitizer) || __has_feature(address_sanitizer)
-const bool is_sanitizer_build = true;
+bool const is_sanitizer_build = true;
 #else
-const bool is_sanitizer_build = false;
+bool const is_sanitizer_build = false;
 #endif
 // GCC builds
 #elif defined(__SANITIZE_THREAD__) || defined(__SANITIZE_ADDRESS__)
-const bool is_sanitizer_build = true;
+bool const is_sanitizer_build = true;
 #else
-const bool is_sanitizer_build = false;
+bool const is_sanitizer_build = false;
 #endif
 
 namespace nano
@@ -50,8 +47,8 @@ uint8_t get_minor_node_version ();
 uint8_t get_patch_node_version ();
 uint8_t get_pre_release_node_version ();
 
-std::string get_env_or_default (char const * variable_name, std::string const default_value);
-uint64_t get_env_threshold_or_default (char const * variable_name, uint64_t const default_value);
+std::string get_env_or_default (char const * variable_name, std::string default_value);
+uint64_t get_env_threshold_or_default (char const * variable_name, uint64_t default_value);
 
 uint16_t test_node_port ();
 uint16_t test_rpc_port ();
@@ -112,7 +109,7 @@ public:
 	{
 	}
 
-	network_constants (nano_networks network_a) :
+	explicit network_constants (nano_networks network_a) :
 	current_network (network_a),
 	publish_thresholds (is_live_network () ? publish_full : is_beta_network () ? publish_beta : is_test_network () ? publish_test : publish_dev)
 	{
@@ -167,9 +164,8 @@ public:
 	 * If not called, the compile-time option will be used.
 	 * @param network_a The new active network. Valid values are "live", "beta" and "dev"
 	 */
-	static bool set_active_network (std::string network_a)
+	static bool set_active_network (std::string const & network_a)
 	{
-		auto error{ false };
 		if (network_a == "live")
 		{
 			active_network = nano::nano_networks::nano_live_network;
@@ -188,12 +184,13 @@ public:
 		}
 		else
 		{
-			error = true;
+			return true;
 		}
-		return error;
+
+		return false;
 	}
 
-	const char * get_current_network_as_string () const
+	char const * get_current_network_as_string () const
 	{
 		return is_live_network () ? "live" : is_beta_network () ? "beta" : is_test_network () ? "test" : "dev";
 	}

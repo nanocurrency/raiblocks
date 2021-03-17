@@ -57,7 +57,7 @@ public:
 	mdb_txn_stats (const nano::transaction_impl * transaction_impl_a);
 	bool is_write () const;
 	nano::timer<std::chrono::milliseconds> timer;
-	const nano::transaction_impl * transaction_impl;
+	nano::transaction_impl const * transaction_impl;
 	std::string thread_name;
 
 	// Smart pointer so that we don't need the full definition which causes min/max issues on Windows

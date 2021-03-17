@@ -1235,7 +1235,7 @@ namespace transport
 		nano::system system;
 		nano::node_flags node_flags;
 		node_flags.disable_initial_telemetry_requests = true;
-		const auto num_nodes = 4;
+		auto const num_nodes = 4;
 		for (int i = 0; i < num_nodes; ++i)
 		{
 			system.add_node (node_flags);
@@ -1244,7 +1244,7 @@ namespace transport
 		wait_peer_connections (system);
 
 		std::vector<std::thread> threads;
-		const auto num_threads = 4;
+		auto const num_threads = 4;
 
 		std::array<data, num_nodes> node_data{};
 		for (auto i = 0; i < num_nodes; ++i)
@@ -1418,7 +1418,7 @@ TEST (telemetry, many_nodes)
 	node_flags.disable_initial_telemetry_requests = true;
 	node_flags.disable_request_loop = true;
 	// The telemetry responses can timeout if using a large number of nodes under sanitizers, so lower the number.
-	const auto num_nodes = (is_sanitizer_build || nano::running_within_valgrind ()) ? 4 : 10;
+	auto const num_nodes = (is_sanitizer_build || nano::running_within_valgrind ()) ? 4 : 10;
 	for (auto i = 0; i < num_nodes; ++i)
 	{
 		nano::node_config node_config (nano::get_available_port (), system.logging);

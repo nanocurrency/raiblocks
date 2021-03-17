@@ -50,7 +50,7 @@ get_env_threshold_or_default ("NANO_TEST_EPOCH_2", 0xfffffff800000000), // 8x hi
 get_env_threshold_or_default ("NANO_TEST_EPOCH_2_RECV", 0xfffffe0000000000) // 8x lower than epoch_1
 );
 
-const char * network_constants::active_network_err_msg = "Invalid network. Valid values are live, test, beta and dev.";
+char const * network_constants::active_network_err_msg = "Invalid network. Valid values are live, test, beta and dev.";
 
 uint8_t get_major_node_version ()
 {

@@ -379,8 +379,8 @@ void nano::confirmation_height_bounded::cement_blocks (nano::write_guard & scope
 		// of blocks to retain consistent cementing across all account chains to genesis.
 		while (!error && !pending_writes.empty ())
 		{
-			const auto & pending = pending_writes.front ();
-			const auto & account = pending.account;
+			auto const & pending = pending_writes.front ();
+			auto const & account = pending.account;
 
 			auto write_confirmation_height = [&account, &ledger = ledger, &transaction](uint64_t num_blocks_cemented, uint64_t confirmation_height, nano::block_hash const & confirmed_frontier) {
 #ifndef NDEBUG

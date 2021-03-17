@@ -41,7 +41,7 @@ bool purge_shared_ptr_singleton_pool_memory ()
 class cleanup_guard final
 {
 public:
-	cleanup_guard (std::vector<std::function<void()>> const & cleanup_funcs_a);
+	explicit cleanup_guard (std::vector<std::function<void()>> const & cleanup_funcs_a);
 	~cleanup_guard ();
 
 private:

@@ -120,7 +120,7 @@ __kernel void nano_work(__constant ulong *attempt,
                         __constant uchar *item_a,
                         __constant ulong *difficulty)
 {
-    const ulong attempt_l = *attempt + get_global_id(0);
+    ulong const attempt_l = *attempt + get_global_id(0);
     if (blake2b(attempt_l, item_a) >= *difficulty)
         *result_a = attempt_l;
 }

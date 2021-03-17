@@ -16,13 +16,13 @@ int create_load_memory_address_file (dl_phdr_info * info, size_t, void *)
 	static int counter = 0;
 	debug_assert (counter <= 99);
 	// Create filename
-	const char file_prefix[] = "nano_node_crash_load_address_dump_";
+	char const file_prefix[] = "nano_node_crash_load_address_dump_";
 	// Holds the filename prefix, a unique (max 2 digits) number and extension (null terminator is included in file_prefix size)
 	char filename[sizeof (file_prefix) + 2 + 4];
 	snprintf (filename, sizeof (filename), "%s%d.txt", file_prefix, counter);
 
 	// Open file
-	const auto file_descriptor = ::open (filename, O_CREAT | O_WRONLY | O_TRUNC,
+	auto const file_descriptor = ::open (filename, O_CREAT | O_WRONLY | O_TRUNC,
 #if defined(S_IWRITE) && defined(S_IREAD)
 	S_IWRITE | S_IREAD
 #else

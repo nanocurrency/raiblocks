@@ -1,7 +1,6 @@
 #include <nano/crypto_lib/random_pool.hpp>
 #include <nano/lib/config.hpp>
 #include <nano/lib/numbers.hpp>
-#include <nano/secure/blockstore.hpp>
 #include <nano/secure/common.hpp>
 
 #include <crypto/cryptopp/words.h>
@@ -117,16 +116,16 @@ genesis_amount (std::numeric_limits<nano::uint128_t>::max ()),
 burn_account (0)
 {
 	nano::link epoch_link_v1;
-	const char * epoch_message_v1 ("epoch v1 block");
+	char const * epoch_message_v1 ("epoch v1 block");
 	strncpy ((char *)epoch_link_v1.bytes.data (), epoch_message_v1, epoch_link_v1.bytes.size ());
 	epochs.add (nano::epoch::epoch_1, genesis_account, epoch_link_v1);
 
 	nano::link epoch_link_v2;
 	nano::account nano_live_epoch_v2_signer;
-	auto error (nano_live_epoch_v2_signer.decode_account ("nano_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x"));
+	auto const error (nano_live_epoch_v2_signer.decode_account ("nano_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x"));
 	debug_assert (!error);
 	auto epoch_v2_signer (network_a == nano::nano_networks::nano_dev_network ? nano_dev_account : network_a == nano::nano_networks::nano_beta_network ? nano_beta_account : network_a == nano::nano_networks::nano_test_network ? nano_test_account : nano_live_epoch_v2_signer);
-	const char * epoch_message_v2 ("epoch v2 block");
+	char const * epoch_message_v2 ("epoch v2 block");
 	strncpy ((char *)epoch_link_v2.bytes.data (), epoch_message_v2, epoch_link_v2.bytes.size ());
 	epochs.add (nano::epoch::epoch_2, epoch_v2_signer, epoch_link_v2);
 }
@@ -195,7 +194,7 @@ prv (std::move (prv_a))
 // Create a keypair given a hex string of the private key
 nano::keypair::keypair (std::string const & prv_a)
 {
-	[[maybe_unused]] auto error (prv.decode_hex (prv_a));
+	[[maybe_unused]] auto const error (prv.decode_hex (prv_a));
 	debug_assert (!error);
 	ed25519_publickey (prv.bytes.data (), pub.bytes.data ());
 }
@@ -220,7 +219,6 @@ epoch_m (epoch_a)
 
 bool nano::account_info::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
 	try
 	{
 		nano::read (stream_a, head.bytes);
@@ -233,10 +231,10 @@ bool nano::account_info::deserialize (nano::stream & stream_a)
 	}
 	catch (std::runtime_error const &)
 	{
-		error = true;
+		return true;
 	}
 
-	return error;
+	return false;
 }
 
 bool nano::account_info::operator== (nano::account_info const & other_a) const
@@ -275,7 +273,6 @@ epoch (epoch_a)
 
 bool nano::pending_info::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
 	try
 	{
 		nano::read (stream_a, source.bytes);
@@ -284,10 +281,10 @@ bool nano::pending_info::deserialize (nano::stream & stream_a)
 	}
 	catch (std::runtime_error const &)
 	{
-		error = true;
+		return true;
 	}
 
-	return error;
+	return false;
 }
 
 size_t nano::pending_info::db_size () const
@@ -308,7 +305,6 @@ hash (hash_a)
 
 bool nano::pending_key::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
 	try
 	{
 		nano::read (stream_a, account.bytes);
@@ -316,10 +312,10 @@ bool nano::pending_key::deserialize (nano::stream & stream_a)
 	}
 	catch (std::runtime_error const &)
 	{
-		error = true;
+		return true;
 	}
 
-	return error;
+	return false;
 }
 
 bool nano::pending_key::operator== (nano::pending_key const & other_a) const
@@ -353,21 +349,24 @@ void nano::unchecked_info::serialize (nano::stream & stream_a) const
 bool nano::unchecked_info::deserialize (nano::stream & stream_a)
 {
 	block = nano::deserialize_block (stream_a);
-	bool error (block == nullptr);
-	if (!error)
+	auto error (block == nullptr);
+	if (error)
 	{
-		try
-		{
-			nano::read (stream_a, account.bytes);
-			nano::read (stream_a, modified);
-			nano::read (stream_a, verified);
-		}
-		catch (std::runtime_error const &)
-		{
-			error = true;
-		}
+		return true;
 	}
-	return error;
+
+	try
+	{
+		nano::read (stream_a, account.bytes);
+		nano::read (stream_a, modified);
+		nano::read (stream_a, verified);
+	}
+	catch (std::runtime_error const &)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 nano::endpoint_key::endpoint_key (const std::array<uint8_t, 16> & address_a, uint16_t port_a) :
@@ -375,7 +374,7 @@ address (address_a), network_port (boost::endian::native_to_big (port_a))
 {
 }
 
-const std::array<uint8_t, 16> & nano::endpoint_key::address_bytes () const
+std::array<uint8_t, 16> const & nano::endpoint_key::address_bytes () const
 {
 	return address;
 }
@@ -399,7 +398,6 @@ void nano::confirmation_height_info::serialize (nano::stream & stream_a) const
 
 bool nano::confirmation_height_info::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
 	try
 	{
 		nano::read (stream_a, height);
@@ -407,9 +405,9 @@ bool nano::confirmation_height_info::deserialize (nano::stream & stream_a)
 	}
 	catch (std::runtime_error const &)
 	{
-		error = true;
+		return true;
 	}
-	return error;
+	return false;
 }
 
 nano::block_info::block_info (nano::account const & account_a, nano::amount const & balance_a) :
@@ -572,7 +570,7 @@ std::string nano::vote::hashes_string () const
 	return result;
 }
 
-const std::string nano::vote::hash_prefix = "vote ";
+std::string const nano::vote::hash_prefix = "vote ";
 
 nano::block_hash nano::vote::hash () const
 {
@@ -657,7 +655,6 @@ void nano::vote::serialize (nano::stream & stream_a) const
 
 bool nano::vote::deserialize (nano::stream & stream_a, nano::block_uniquer * uniquer_a)
 {
-	auto error (false);
 	try
 	{
 		nano::read (stream_a, account);
@@ -694,15 +691,15 @@ bool nano::vote::deserialize (nano::stream & stream_a, nano::block_uniquer * uni
 	}
 	catch (std::runtime_error const &)
 	{
-		error = true;
+		return true;
 	}
 
 	if (blocks.empty ())
 	{
-		error = true;
+		return true;
 	}
 
-	return error;
+	return false;
 }
 
 bool nano::vote::validate () const
@@ -763,7 +760,7 @@ std::shared_ptr<nano::vote> nano::vote_uniquer::unique (std::shared_ptr<nano::vo
 		release_assert (std::numeric_limits<CryptoPP::word32>::max () > votes.size ());
 		for (auto i (0); i < cleanup_count && !votes.empty (); ++i)
 		{
-			auto random_offset = nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (votes.size () - 1));
+			auto const random_offset = nano::random_pool::generate_word32 (0, static_cast<CryptoPP::word32> (votes.size () - 1));
 
 			auto existing (std::next (votes.begin (), random_offset));
 			if (existing == votes.end ())
@@ -794,8 +791,8 @@ size_t nano::vote_uniquer::size ()
 
 std::unique_ptr<nano::container_info_component> nano::collect_container_info (vote_uniquer & vote_uniquer, std::string const & name)
 {
-	auto count = vote_uniquer.size ();
-	auto sizeof_element = sizeof (vote_uniquer::value_type);
+	auto const count = vote_uniquer.size ();
+	auto const sizeof_element = sizeof (vote_uniquer::value_type);
 	auto composite = std::make_unique<container_info_composite> (name);
 	composite->add_component (std::make_unique<container_info_leaf> (container_info{ "votes", count, sizeof_element }));
 	return composite;
@@ -830,7 +827,6 @@ hash (hash_a)
 
 bool nano::unchecked_key::deserialize (nano::stream & stream_a)
 {
-	auto error (false);
 	try
 	{
 		nano::read (stream_a, previous.bytes);
@@ -838,10 +834,10 @@ bool nano::unchecked_key::deserialize (nano::stream & stream_a)
 	}
 	catch (std::runtime_error const &)
 	{
-		error = true;
+		return true;
 	}
 
-	return error;
+	return false;
 }
 
 bool nano::unchecked_key::operator== (nano::unchecked_key const & other_a) const

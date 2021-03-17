@@ -260,7 +260,7 @@ void nano::network::broadcast_confirm_req (std::shared_ptr<nano::block> const & 
 	 * of "broadcast_confirm_req" will be responsible for calling it again
 	 * if the votes for a block have not arrived in time.
 	 */
-	const size_t max_endpoints = 32;
+	size_t const max_endpoints = 32;
 	nano::random_pool_shuffle (list->begin (), list->end ());
 	if (list->size () > max_endpoints)
 	{
@@ -272,7 +272,7 @@ void nano::network::broadcast_confirm_req (std::shared_ptr<nano::block> const & 
 
 void nano::network::broadcast_confirm_req_base (std::shared_ptr<nano::block> const & block_a, std::shared_ptr<std::vector<std::shared_ptr<nano::transport::channel>>> const & endpoints_a, unsigned delay_a, bool resumption)
 {
-	const size_t max_reps = 10;
+	size_t const max_reps = 10;
 	if (!resumption && node.config.logging.network_logging ())
 	{
 		node.logger.try_log (boost::str (boost::format ("Broadcasting confirm req for block %1% to %2% representatives") % block_a->hash ().to_string () % endpoints_a->size ()));

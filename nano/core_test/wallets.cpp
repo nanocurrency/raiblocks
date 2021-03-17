@@ -79,7 +79,7 @@ TEST (wallets, DISABLED_wallet_create_max)
 	nano::system system (1);
 	bool error (false);
 	nano::wallets wallets (error, *system.nodes[0]);
-	const int nonWalletDbs = 19;
+	int const nonWalletDbs = 19;
 	for (int i = 0; i < system.nodes[0]->config.deprecated_lmdb_max_dbs - nonWalletDbs; i++)
 	{
 		auto wallet_id = nano::random_wallet_id ();

@@ -7,7 +7,6 @@
 
 #include <gtest/gtest.h>
 
-
 TEST (processor_service, bad_send_signature)
 {
 	nano::logger_mt logger;

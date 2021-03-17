@@ -401,7 +401,7 @@ public:
 	 * Initialize stats with a config.
 	 * @param config Configuration object; deserialized from config.json
 	 */
-	stat (nano::stat_config config);
+	explicit stat (nano::stat_config config);
 
 	/**
 	 * Call this to override the default sample interval and capacity, for a specific stat entry.

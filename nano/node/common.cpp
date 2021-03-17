@@ -4,14 +4,11 @@
 #include <nano/node/active_transactions.hpp>
 #include <nano/node/common.hpp>
 #include <nano/node/election.hpp>
-#include <nano/node/wallet.hpp>
 #include <nano/secure/buffer.hpp>
 
 #include <boost/endian/conversion.hpp>
 #include <boost/pool/pool_alloc.hpp>
 #include <boost/variant/get.hpp>
-
-#include <numeric>
 
 std::bitset<16> constexpr nano::message_header::block_type_mask;
 std::bitset<16> constexpr nano::message_header::count_mask;
@@ -270,7 +267,7 @@ size_t nano::message_header::payload_length_bytes () const
 }
 
 // MTU - IP header - UDP header
-const size_t nano::message_parser::max_safe_udp_message_size = 508;
+size_t const nano::message_parser::max_safe_udp_message_size = 508;
 
 std::string nano::message_parser::status_string ()
 {

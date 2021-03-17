@@ -29,12 +29,12 @@ m_buffer (boost::asio::buffer (*m_data))
 {
 }
 
-const boost::asio::const_buffer * nano::shared_const_buffer::begin () const
+boost::asio::const_buffer const * nano::shared_const_buffer::begin () const
 {
 	return &m_buffer;
 }
 
-const boost::asio::const_buffer * nano::shared_const_buffer::end () const
+boost::asio::const_buffer const * nano::shared_const_buffer::end () const
 {
 	return &m_buffer + 1;
 }

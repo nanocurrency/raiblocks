@@ -162,7 +162,7 @@ enum class error_config
 		class enum_type##_messages : public std::error_category                                                \
 		{                                                                                                      \
 		public:                                                                                                \
-			const char * name () const noexcept override                                                       \
+			char const * name () const noexcept override                                                       \
 			{                                                                                                  \
 				return #enum_type;                                                                             \
 			}                                                                                                  \
@@ -196,12 +196,9 @@ REGISTER_ERROR_CODES (nano, error_process);
 REGISTER_ERROR_CODES (nano, error_config);
 
 /* boost->std error_code bridge */
-namespace nano
+namespace nano::error_conversion
 {
-namespace error_conversion
-{
-	const std::error_category & generic_category ();
-}
+std::error_category const & generic_category ();
 }
 
 namespace std
@@ -214,22 +211,19 @@ struct is_error_code_enum<boost::system::errc::errc_t>
 
 std::error_code make_error_code (boost::system::errc::errc_t const & e);
 }
-namespace nano
+namespace nano::error_conversion
 {
-namespace error_conversion
+namespace detail
 {
-	namespace detail
+	class generic_category : public std::error_category
 	{
-		class generic_category : public std::error_category
-		{
-		public:
-			const char * name () const noexcept override;
-			std::string message (int value) const override;
-		};
-	}
-	const std::error_category & generic_category ();
-	std::error_code convert (const boost::system::error_code & error);
+	public:
+		char const * name () const noexcept override;
+		std::string message (int value) const override;
+	};
 }
+std::error_category const & generic_category ();
+std::error_code convert (const boost::system::error_code & error);
 }
 
 namespace nano
@@ -242,19 +236,19 @@ public:
 	error (nano::error const & error_a) = default;
 	error (nano::error && error_a) = default;
 
-	error (std::error_code code_a);
-	error (boost::system::error_code const & code_a);
-	error (std::string message_a);
-	error (std::exception const & exception_a);
+	explicit error (std::error_code code_a);
+	explicit error (boost::system::error_code const & code_a);
+	explicit error (std::string message_a);
+	explicit error (std::exception const & exception_a);
 	error & operator= (nano::error const & err_a);
 	error & operator= (nano::error && err_a);
-	error & operator= (const std::error_code code_a);
+	error & operator= (std::error_code code_a);
 	error & operator= (const boost::system::error_code & code_a);
 	error & operator= (const boost::system::errc::errc_t & code_a);
-	error & operator= (const std::string message_a);
+	error & operator= (std::string message_a);
 	error & operator= (std::exception const & exception_a);
-	bool operator== (const std::error_code code_a) const;
-	bool operator== (const boost::system::error_code code_a) const;
+	bool operator== (std::error_code code_a) const;
+	bool operator== (boost::system::error_code code_a) const;
 	error & then (std::function<nano::error &()> next);
 	template <typename... ErrorCode>
 	error & accept (ErrorCode... err)

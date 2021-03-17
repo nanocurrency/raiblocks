@@ -193,8 +193,8 @@ namespace nano
 nano::error read_rpc_config_toml (boost::filesystem::path const & data_path_a, nano::rpc_config & config_a, std::vector<std::string> const & config_overrides)
 {
 	nano::error error;
-	auto json_config_path = nano::get_rpc_config_path (data_path_a);
-	auto toml_config_path = nano::get_rpc_toml_config_path (data_path_a);
+	auto const json_config_path = nano::get_rpc_config_path (data_path_a);
+	auto const toml_config_path = nano::get_rpc_toml_config_path (data_path_a);
 	if (boost::filesystem::exists (json_config_path))
 	{
 		if (boost::filesystem::exists (toml_config_path))
@@ -244,23 +244,24 @@ nano::error read_rpc_config_toml (boost::filesystem::path const & data_path_a, n
 	config_overrides_stream << std::endl;
 
 	// Make sure we don't create an empty toml file if it doesn't exist. Running without a toml file is the default.
-	if (!error)
+	if (error)
 	{
-		if (boost::filesystem::exists (toml_config_path))
-		{
-			error = toml.read (config_overrides_stream, toml_config_path);
-		}
-		else
-		{
-			error = toml.read (config_overrides_stream);
-		}
+		return error;
+	}
+	if (boost::filesystem::exists (toml_config_path))
+	{
+		error = toml.read (config_overrides_stream, toml_config_path);
+	}
+	else
+	{
+		error = toml.read (config_overrides_stream);
+	}
+	if (error)
+	{
+		return error;
 	}
 
-	if (!error)
-	{
-		error = config_a.deserialize_toml (toml);
-	}
-
+	error = config_a.deserialize_toml (toml);
 	return error;
 }
 

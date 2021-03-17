@@ -202,7 +202,7 @@ bool nano::bootstrap_attempt_legacy::confirm_frontiers (nano::unique_lock<nano::
 	auto frontiers_count (frontiers.size ());
 	if (frontiers_count > 0)
 	{
-		const size_t reps_limit = 20;
+		size_t const reps_limit = 20;
 		auto representatives (node->rep_crawler.representatives ());
 		auto reps_weight (node->rep_crawler.total_weight ());
 		auto representatives_copy (representatives);

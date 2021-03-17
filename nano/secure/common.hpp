@@ -79,8 +79,8 @@ class keypair
 {
 public:
 	keypair ();
-	keypair (std::string const &);
-	keypair (nano::raw_key &&);
+	explicit keypair (std::string const &);
+	explicit keypair (nano::raw_key &&);
 	nano::public_key pub;
 	nano::raw_key prv;
 };
@@ -149,7 +149,7 @@ public:
 	/*
 	 * @return The ipv6 address in network byte order
 	 */
-	const std::array<uint8_t, 16> & address_bytes () const;
+	std::array<uint8_t, 16> const & address_bytes () const;
 
 	/*
 	 * @return The port in host byte order
@@ -281,7 +281,7 @@ class vote_uniquer final
 public:
 	using value_type = std::pair<const nano::block_hash, std::weak_ptr<nano::vote>>;
 
-	vote_uniquer (nano::block_uniquer &);
+	explicit vote_uniquer (nano::block_uniquer &);
 	std::shared_ptr<nano::vote> unique (std::shared_ptr<nano::vote> const &);
 	size_t size ();
 
@@ -422,7 +422,7 @@ public:
 class voting_constants
 {
 public:
-	voting_constants (nano::network_constants & network_constants);
+	explicit voting_constants (nano::network_constants & network_constants);
 	size_t const max_cache;
 	std::chrono::seconds const delay;
 };
@@ -431,7 +431,7 @@ public:
 class portmapping_constants
 {
 public:
-	portmapping_constants (nano::network_constants & network_constants);
+	explicit portmapping_constants (nano::network_constants & network_constants);
 	// Timeouts are primes so they infrequently happen at the same time
 	std::chrono::seconds lease_duration;
 	std::chrono::seconds health_check_period;
@@ -441,7 +441,7 @@ public:
 class bootstrap_constants
 {
 public:
-	bootstrap_constants (nano::network_constants & network_constants);
+	explicit bootstrap_constants (nano::network_constants & network_constants);
 	uint32_t lazy_max_pull_blocks;
 	uint32_t lazy_min_pull_blocks;
 	unsigned frontier_retry_limit;
@@ -459,7 +459,7 @@ public:
 	network_params ();
 
 	/** Populate values based on \p network_a */
-	network_params (nano::nano_networks network_a);
+	explicit network_params (nano::nano_networks network_a);
 
 	std::array<uint8_t, 2> header_magic_number;
 	unsigned kdf_work;

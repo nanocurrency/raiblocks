@@ -10,17 +10,17 @@ std::vector<std::string> nano::config_overrides (std::vector<config_key_value_pa
 	std::vector<std::string> overrides;
 	auto format (boost::format ("%1%=%2%"));
 	auto format_add_escaped_quotes (boost::format ("%1%=\"%2%\""));
-	for (auto pair : key_value_pairs_a)
+	for (auto const & pair : key_value_pairs_a)
 	{
-		auto start = pair.value.find ('[');
+		auto const start = pair.value.find ('[');
 
 		std::string value;
-		auto is_array = (start != std::string::npos);
+		auto const is_array = (start != std::string::npos);
 		if (is_array)
 		{
 			// Trim off the square brackets [] of the array
-			auto end = pair.value.find (']');
-			auto array_values = pair.value.substr (start + 1, end - start - 1);
+			auto const end = pair.value.find (']');
+			auto const array_values = pair.value.substr (start + 1, end - start - 1);
 
 			// Split the string by comma
 			std::vector<std::string> split_elements;

@@ -18,36 +18,36 @@ enum class work_version
 	unspecified,
 	work_1
 };
-std::string to_string (nano::work_version const version_a);
+std::string to_string (nano::work_version version_a);
 
 class block;
 class block_details;
 enum class block_type : uint8_t;
 bool work_validate_entry (nano::block const &);
-bool work_validate_entry (nano::work_version const, nano::root const &, uint64_t const);
+bool work_validate_entry (nano::work_version, nano::root const &, uint64_t);
 
-uint64_t work_difficulty (nano::work_version const, nano::root const &, uint64_t const);
+uint64_t work_difficulty (nano::work_version, nano::root const &, uint64_t);
 
-uint64_t work_threshold_base (nano::work_version const);
-uint64_t work_threshold_entry (nano::work_version const, nano::block_type const);
+uint64_t work_threshold_base (nano::work_version);
+uint64_t work_threshold_entry (nano::work_version, nano::block_type);
 // Ledger threshold
-uint64_t work_threshold (nano::work_version const, nano::block_details const);
+uint64_t work_threshold (nano::work_version, nano::block_details);
 
 namespace work_v1
 {
 	uint64_t value (nano::root const & root_a, uint64_t work_a);
 	uint64_t threshold_base ();
 	uint64_t threshold_entry ();
-	uint64_t threshold (nano::block_details const);
+	uint64_t threshold (nano::block_details);
 }
 
-double normalized_multiplier (double const, uint64_t const);
-double denormalized_multiplier (double const, uint64_t const);
+double normalized_multiplier (double, uint64_t);
+double denormalized_multiplier (double, uint64_t);
 class opencl_work;
 class work_item final
 {
 public:
-	work_item (nano::work_version const version_a, nano::root const & item_a, uint64_t difficulty_a, std::function<void(boost::optional<uint64_t> const &)> const & callback_a) :
+	work_item (nano::work_version version_a, nano::root const & item_a, uint64_t difficulty_a, std::function<void(boost::optional<uint64_t> const &)> const & callback_a) :
 	version (version_a), item (item_a), difficulty (difficulty_a), callback (callback_a)
 	{
 	}
@@ -59,13 +59,13 @@ public:
 class work_pool final
 {
 public:
-	work_pool (unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0), std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, std::atomic<int> &)> = nullptr);
+	explicit work_pool (unsigned, std::chrono::nanoseconds = std::chrono::nanoseconds (0), std::function<boost::optional<uint64_t> (nano::work_version const, nano::root const &, uint64_t, std::atomic<int> &)> = nullptr);
 	~work_pool ();
 	void loop (uint64_t);
 	void stop ();
 	void cancel (nano::root const &);
-	void generate (nano::work_version const, nano::root const &, uint64_t, std::function<void(boost::optional<uint64_t> const &)>);
-	boost::optional<uint64_t> generate (nano::work_version const, nano::root const &, uint64_t);
+	void generate (nano::work_version, nano::root const &, uint64_t, std::function<void(boost::optional<uint64_t> const &)>);
+	boost::optional<uint64_t> generate (nano::work_version, nano::root const &, uint64_t);
 	// For tests only
 	boost::optional<uint64_t> generate (nano::root const &);
 	boost::optional<uint64_t> generate (nano::root const &, uint64_t);

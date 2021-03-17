@@ -190,7 +190,7 @@ double nano::denormalized_multiplier (double const multiplier_a, uint64_t const 
 	auto multiplier (multiplier_a);
 	if (threshold_a == network_constants.publish_thresholds.epoch_1 || threshold_a == network_constants.publish_thresholds.epoch_2_receive)
 	{
-		auto ratio (nano::difficulty::to_multiplier (network_constants.publish_thresholds.epoch_2, threshold_a));
+		auto const ratio (nano::difficulty::to_multiplier (network_constants.publish_thresholds.epoch_2, threshold_a));
 		debug_assert (ratio >= 1);
 		multiplier = multiplier * ratio + 1.0 - ratio;
 		debug_assert (multiplier >= 1);
@@ -242,7 +242,7 @@ void nano::work_pool::loop (uint64_t thread)
 	blake2b_state hash;
 	blake2b_init (&hash, sizeof (output));
 	nano::unique_lock<nano::mutex> lock (mutex);
-	auto pow_sleep = pow_rate_limiter;
+	auto const pow_sleep = pow_rate_limiter;
 	while (!done)
 	{
 		auto empty (pending.empty ());
@@ -253,7 +253,7 @@ void nano::work_pool::loop (uint64_t thread)
 		}
 		if (!empty)
 		{
-			auto current_l (pending.front ());
+			auto const current_l (pending.front ());
 			int ticket_l (ticket);
 			lock.unlock ();
 			output = 0;

@@ -59,7 +59,7 @@ public:
 	bool rollback (nano::write_transaction const &, nano::block_hash const &, std::vector<std::shared_ptr<nano::block>> &);
 	bool rollback (nano::write_transaction const &, nano::block_hash const &);
 	void update_account (nano::write_transaction const &, nano::account const &, nano::account_info const &, nano::account_info const &);
-	uint64_t pruning_action (nano::write_transaction &, nano::block_hash const &, uint64_t const);
+	uint64_t pruning_action (nano::write_transaction &, nano::block_hash const &, uint64_t);
 	void dump_account_chain (nano::account const &, std::ostream & = std::cout);
 	bool could_fit (nano::transaction const &, nano::block const &) const;
 	bool dependents_confirmed (nano::transaction const &, nano::block const &) const;

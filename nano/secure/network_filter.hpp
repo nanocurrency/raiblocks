@@ -20,7 +20,7 @@ class network_filter final
 {
 public:
 	network_filter () = delete;
-	network_filter (size_t size_a);
+	explicit network_filter (size_t size_a);
 	/**
 	 * Reads \p count_a bytes starting from \p bytes_a and inserts the siphash digest in the filter.
 	 * @param \p digest_a if given, will be set to the resulting siphash digest

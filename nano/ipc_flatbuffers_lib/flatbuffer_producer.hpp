@@ -33,8 +33,8 @@ namespace ipc
 		template <typename T>
 		auto make_envelope (flatbuffers::Offset<T> obj)
 		{
-			auto correlation_id_string = fbb->CreateString (correlation_id);
-			auto credentials_string = fbb->CreateString (credentials);
+			auto const correlation_id_string = fbb->CreateString (correlation_id);
+			auto const credentials_string = fbb->CreateString (credentials);
 			nanoapi::EnvelopeBuilder envelope_builder (*fbb);
 			envelope_builder.add_time (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ());
 			envelope_builder.add_message_type (nanoapi::MessageTraits<T>::enum_value);
@@ -54,7 +54,7 @@ namespace ipc
 		template <typename T>
 		void create_response (flatbuffers::Offset<T> offset)
 		{
-			auto root = make_envelope (offset);
+			auto const root = make_envelope (offset);
 			fbb->Finish (root);
 		}
 
@@ -67,8 +67,8 @@ namespace ipc
 		template <typename T>
 		void create_builder_response (T builder)
 		{
-			auto offset = builder.Finish ();
-			auto root = make_envelope (offset);
+			auto const offset = builder.Finish ();
+			auto const root = make_envelope (offset);
 			fbb->Finish (root);
 		}
 

@@ -221,7 +221,7 @@ bool nano::transport::tcp_channels::store_all (bool clear_peers)
 		nano::lock_guard<nano::mutex> lock (mutex);
 		endpoints.reserve (channels.size ());
 		std::transform (channels.begin (), channels.end (),
-		std::back_inserter (endpoints), [](const auto & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
+		std::back_inserter (endpoints), [](auto const & channel) { return nano::transport::map_tcp_to_endpoint (channel.endpoint ()); });
 	}
 	bool result (false);
 	if (!endpoints.empty ())
@@ -485,7 +485,7 @@ void nano::transport::tcp_channels::list_below_version (std::vector<std::shared_
 	// clang-format off
 	nano::transform_if (channels.get<random_access_tag> ().begin (), channels.get<random_access_tag> ().end (), std::back_inserter (channels_a),
 		[cutoff_version_a](auto & channel_a) { return channel_a.channel->get_network_version () < cutoff_version_a; },
-		[](const auto & channel) { return channel.channel; });
+		[](auto const & channel) { return channel.channel; });
 	// clang-format on
 }
 
@@ -495,7 +495,7 @@ void nano::transport::tcp_channels::list (std::deque<std::shared_ptr<nano::trans
 	// clang-format off
 	nano::transform_if (channels.get<random_access_tag> ().begin (), channels.get<random_access_tag> ().end (), std::back_inserter (deque_a),
 		[include_temporary_channels_a, minimum_version_a](auto & channel_a) { return channel_a.channel->get_network_version () >= minimum_version_a && (include_temporary_channels_a || !channel_a.channel->temporary); },
-		[](const auto & channel) { return channel.channel; });
+		[](auto const & channel) { return channel.channel; });
 	// clang-format on
 }
 

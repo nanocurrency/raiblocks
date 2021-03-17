@@ -13,11 +13,11 @@ items (size_a, nano::uint128_t{ 0 })
 bool nano::network_filter::apply (uint8_t const * bytes_a, size_t count_a, nano::uint128_t * digest_a)
 {
 	// Get hash before locking
-	auto digest (hash (bytes_a, count_a));
+	auto const digest (hash (bytes_a, count_a));
 
 	nano::lock_guard<nano::mutex> lock (mutex);
 	auto & element (get_element (digest));
-	bool existed (element == digest);
+	bool const existed (element == digest);
 	if (!existed)
 	{
 		// Replace likely old element with a new one
@@ -85,7 +85,7 @@ nano::uint128_t & nano::network_filter::get_element (nano::uint128_t const & has
 {
 	debug_assert (!mutex.try_lock ());
 	debug_assert (items.size () > 0);
-	size_t index (hash_a % items.size ());
+	size_t const index (hash_a % items.size ());
 	return items[index];
 }
 

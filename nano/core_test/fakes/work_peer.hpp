@@ -32,7 +32,7 @@ enum class work_peer_type
 
 class work_peer_connection : public std::enable_shared_from_this<work_peer_connection>
 {
-	const std::string generic_error = "Unable to parse JSON";
+	std::string const generic_error = "Unable to parse JSON";
 
 public:
 	work_peer_connection (asio::io_context & ioc_a, work_peer_type const type_a, nano::work_version const version_a, nano::work_pool & pool_a, std::function<void(bool const)> on_generation_a, std::function<void()> on_cancel_a) :

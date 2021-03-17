@@ -19,8 +19,8 @@ class timer
 {
 public:
 	timer () = default;
-	timer (nano::timer_state state_a, std::string const & description_a = "timer");
-	timer (std::string const & description_a);
+	explicit timer (nano::timer_state state_a, std::string const & description_a = "timer");
+	explicit timer (std::string const & description_a);
 	timer (std::string const & description_a, timer * parent_a);
 
 	/** Do not output if measured time is below the time units threshold in \p minimum_a */

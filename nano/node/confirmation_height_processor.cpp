@@ -62,7 +62,7 @@ void nano::confirmation_height_processor::run (confirmation_height_mode mode_a)
 
 			set_next_hash ();
 
-			const auto num_blocks_to_use_unbounded = confirmation_height::unbounded_cutoff;
+			auto const num_blocks_to_use_unbounded = confirmation_height::unbounded_cutoff;
 			auto blocks_within_automatic_unbounded_selection = (ledger.cache.block_count < num_blocks_to_use_unbounded || ledger.cache.block_count - num_blocks_to_use_unbounded < ledger.cache.cemented_count);
 
 			// Don't want to mix up pending writes across different processors

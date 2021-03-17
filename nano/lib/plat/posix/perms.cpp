@@ -3,7 +3,6 @@
 #include <boost/filesystem.hpp>
 
 #include <sys/stat.h>
-#include <sys/types.h>
 
 void nano::set_umask ()
 {

@@ -17,13 +17,13 @@
 
 nano::uint256_union nano::wallet_store::check (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::check_special));
+	nano::wallet_value const value (entry_get_raw (transaction_a, nano::wallet_store::check_special));
 	return value.key;
 }
 
 nano::uint256_union nano::wallet_store::salt (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::salt_special));
+	nano::wallet_value const value (entry_get_raw (transaction_a, nano::wallet_store::salt_special));
 	return value.key;
 }
 
@@ -39,7 +39,7 @@ void nano::wallet_store::wallet_key (nano::raw_key & prv_a, nano::transaction co
 
 void nano::wallet_store::seed (nano::raw_key & prv_a, nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::seed_special));
+	nano::wallet_value const value (entry_get_raw (transaction_a, nano::wallet_store::seed_special));
 	nano::raw_key password_l;
 	wallet_key (password_l, transaction_a);
 	prv_a.decrypt (value.key, password_l, salt (transaction_a).owords[seed_iv_index]);
@@ -77,7 +77,7 @@ nano::public_key nano::wallet_store::deterministic_insert (nano::transaction con
 
 nano::public_key nano::wallet_store::deterministic_insert (nano::transaction const & transaction_a, uint32_t const index)
 {
-	auto prv = deterministic_key (transaction_a, index);
+	auto const prv = deterministic_key (transaction_a, index);
 	nano::public_key result (nano::pub_key (prv));
 	uint64_t marker (1);
 	marker <<= 32;
@@ -96,20 +96,19 @@ nano::raw_key nano::wallet_store::deterministic_key (nano::transaction const & t
 
 uint32_t nano::wallet_store::deterministic_index_get (nano::transaction const & transaction_a)
 {
-	nano::wallet_value value (entry_get_raw (transaction_a, nano::wallet_store::deterministic_index_special));
+	nano::wallet_value const value (entry_get_raw (transaction_a, nano::wallet_store::deterministic_index_special));
 	return static_cast<uint32_t> (value.key.number () & static_cast<uint32_t> (-1));
 }
 
 void nano::wallet_store::deterministic_index_set (nano::transaction const & transaction_a, uint32_t index_a)
 {
-	nano::raw_key index_l (index_a);
-	nano::wallet_value value (index_l, 0);
+	nano::raw_key const index_l (index_a);
+	nano::wallet_value const value (index_l, 0);
 	entry_put_raw (transaction_a, nano::wallet_store::deterministic_index_special, value);
 }
 
 void nano::wallet_store::deterministic_clear (nano::transaction const & transaction_a)
 {
-	nano::uint256_union key (0);
 	for (auto i (begin (transaction_a)), n (end ()); i != n;)
 	{
 		switch (key_type (nano::wallet_value (i->second)))
@@ -139,7 +138,7 @@ bool nano::wallet_store::valid_password (nano::transaction const & transaction_a
 	wallet_key (wallet_key_l, transaction_a);
 	nano::uint256_union check_l;
 	check_l.encrypt (zero, wallet_key_l, salt (transaction_a).owords[check_iv_index]);
-	bool ok = check (transaction_a) == check_l;
+	bool const ok = check (transaction_a) == check_l;
 	return ok;
 }
 
@@ -942,7 +941,7 @@ std::shared_ptr<nano::block> nano::wallet::send_action (nano::account const & so
 		id_mdb_val = nano::mdb_val (id_a->size (), const_cast<char *> (id_a->data ()));
 	}
 
-	auto prepare_send = [&id_mdb_val, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a](const auto & transaction) {
+	auto prepare_send = [&id_mdb_val, &wallets = this->wallets, &store = this->store, &source_a, &amount_a, &work_a, &account_a](auto const & transaction) {
 		auto block_transaction (wallets.node.store.tx_begin_read ());
 		auto error (false);
 		auto cached_block (false);
@@ -1518,9 +1517,9 @@ thread ([this]() {
 	}
 	if (backup_required)
 	{
-		const char * store_path;
+		char const * store_path;
 		mdb_env_get_path (env, &store_path);
-		const boost::filesystem::path path (store_path);
+		boost::filesystem::path const path (store_path);
 		nano::mdb_store::create_backup_file (env, path, node_a.logger);
 	}
 	for (auto & item : items)
@@ -1582,8 +1581,8 @@ bool nano::wallets::search_pending (nano::wallet_id const & wallet_a)
 void nano::wallets::search_pending_all ()
 {
 	nano::unique_lock<nano::mutex> lk (mutex);
-	auto wallets_l = get_wallets ();
-	auto wallet_transaction (tx_begin_read ());
+	auto const wallets_l = get_wallets ();
+	auto const wallet_transaction (tx_begin_read ());
 	lk.unlock ();
 	for (auto const & [id, wallet] : wallets_l)
 	{
@@ -1609,10 +1608,11 @@ void nano::wallets::reload ()
 	nano::lock_guard<nano::mutex> lock (mutex);
 	auto transaction (tx_begin_write ());
 	std::unordered_set<nano::uint256_union> stored_items;
-	std::string beginning (nano::uint256_union (0).to_string ());
-	std::string end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
+	std::string const beginning (nano::uint256_union (0).to_string ());
+	std::string const end ((nano::uint256_union (nano::uint256_t (0) - nano::uint256_t (1))).to_string ());
+
 	nano::store_iterator<std::array<char, 64>, nano::no_value> i (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction, handle, nano::mdb_val (beginning.size (), const_cast<char *> (beginning.c_str ()))));
-	nano::store_iterator<std::array<char, 64>, nano::no_value> n (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction, handle, nano::mdb_val (end.size (), const_cast<char *> (end.c_str ()))));
+	nano::store_iterator<std::array<char, 64>, nano::no_value> const n (std::make_unique<nano::mdb_iterator<std::array<char, 64>, nano::no_value>> (transaction, handle, nano::mdb_val (end.size (), const_cast<char *> (end.c_str ()))));
 	for (; i != n; ++i)
 	{
 		nano::wallet_id id;
@@ -1633,17 +1633,17 @@ void nano::wallets::reload ()
 	}
 	// Delete non existing wallets from memory
 	std::vector<nano::wallet_id> deleted_items;
-	for (auto i : items)
+	for (auto const & wallet_id : items)
 	{
-		if (stored_items.find (i.first) == stored_items.end ())
+		if (stored_items.find (wallet_id.first) == stored_items.end ())
 		{
-			deleted_items.push_back (i.first);
+			deleted_items.push_back (wallet_id.first);
 		}
 	}
-	for (auto & i : deleted_items)
+	for (auto const & wallet_id : deleted_items)
 	{
-		debug_assert (items.find (i) == items.end ());
-		items.erase (i);
+		debug_assert (items.find (wallet_id) == items.end ());
+		items.erase (wallet_id);
 	}
 }
 

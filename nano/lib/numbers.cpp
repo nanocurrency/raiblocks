@@ -74,58 +74,59 @@ bool nano::public_key::decode_node_id (std::string const & source_a)
 bool nano::public_key::decode_account (std::string const & source_a)
 {
 	auto error (source_a.size () < 5);
-	if (!error)
+	if (error)
 	{
-		auto xrb_prefix (source_a[0] == 'x' && source_a[1] == 'r' && source_a[2] == 'b' && (source_a[3] == '_' || source_a[3] == '-'));
-		auto nano_prefix (source_a[0] == 'n' && source_a[1] == 'a' && source_a[2] == 'n' && source_a[3] == 'o' && (source_a[4] == '_' || source_a[4] == '-'));
-		auto node_id_prefix = (source_a[0] == 'n' && source_a[1] == 'o' && source_a[2] == 'd' && source_a[3] == 'e' && source_a[4] == '_');
-		error = (xrb_prefix && source_a.size () != 64) || (nano_prefix && source_a.size () != 65);
-		if (!error)
-		{
-			if (xrb_prefix || nano_prefix || node_id_prefix)
-			{
-				auto i (source_a.begin () + (xrb_prefix ? 4 : 5));
-				if (*i == '1' || *i == '3')
-				{
-					nano::uint512_t number_l;
-					for (auto j (source_a.end ()); !error && i != j; ++i)
-					{
-						uint8_t character (*i);
-						error = character < 0x30 || character >= 0x80;
-						if (!error)
-						{
-							uint8_t byte (account_decode (character));
-							error = byte == '~';
-							if (!error)
-							{
-								number_l <<= 5;
-								number_l += byte;
-							}
-						}
-					}
-					if (!error)
-					{
-						*this = (number_l >> 40).convert_to<nano::uint256_t> ();
-						uint64_t check (number_l & static_cast<uint64_t> (0xffffffffff));
-						uint64_t validation (0);
-						blake2b_state hash;
-						blake2b_init (&hash, 5);
-						blake2b_update (&hash, bytes.data (), bytes.size ());
-						blake2b_final (&hash, reinterpret_cast<uint8_t *> (&validation), 5);
-						error = check != validation;
-					}
-				}
-				else
-				{
-					error = true;
-				}
-			}
-			else
-			{
-				error = true;
-			}
-		}
+		return true;
 	}
+
+	auto const xrb_prefix (source_a[0] == 'x' && source_a[1] == 'r' && source_a[2] == 'b' && (source_a[3] == '_' || source_a[3] == '-'));
+	auto const nano_prefix (source_a[0] == 'n' && source_a[1] == 'a' && source_a[2] == 'n' && source_a[3] == 'o' && (source_a[4] == '_' || source_a[4] == '-'));
+	auto const node_id_prefix = (source_a[0] == 'n' && source_a[1] == 'o' && source_a[2] == 'd' && source_a[3] == 'e' && source_a[4] == '_');
+	error = (xrb_prefix && source_a.size () != 64) || (nano_prefix && source_a.size () != 65);
+	if (error)
+	{
+		return true;
+	}
+
+	if (!xrb_prefix && !nano_prefix && !node_id_prefix)
+	{
+		return true;
+	}
+
+	auto i (source_a.begin () + (xrb_prefix ? 4 : 5));
+	if (*i != '1' && *i != '3')
+	{
+		return true;
+	}
+
+	nano::uint512_t number_l;
+	for (auto j (source_a.end ()); i != j; ++i)
+	{
+		uint8_t character (*i);
+		error = character < 0x30 || character >= 0x80;
+		if (error)
+		{
+			return true;
+		}
+
+		uint8_t byte (account_decode (character));
+		error = byte == '~';
+		if (error)
+		{
+			return true;
+		}
+		number_l <<= 5;
+		number_l += byte;
+	}
+
+	*this = (number_l >> 40).convert_to<nano::uint256_t> ();
+	uint64_t const check (number_l & static_cast<uint64_t> (0xffffffffff));
+	uint64_t validation (0);
+	blake2b_state hash;
+	blake2b_init (&hash, 5);
+	blake2b_update (&hash, bytes.data (), bytes.size ());
+	blake2b_final (&hash, reinterpret_cast<uint8_t *> (&validation), 5);
+	error = check != validation;
 	return error;
 }
 
@@ -216,31 +217,29 @@ void nano::uint256_union::encode_hex (std::string & text) const
 
 bool nano::uint256_union::decode_hex (std::string const & text)
 {
-	auto error (false);
-	if (!text.empty () && text.size () <= 64)
+	if (text.empty () || text.size () > 64)
 	{
-		std::stringstream stream (text);
-		stream << std::hex << std::noshowbase;
-		nano::uint256_t number_l;
-		try
+		return true;
+	}
+
+	std::stringstream stream (text);
+	stream << std::hex << std::noshowbase;
+	nano::uint256_t number_l;
+	try
+	{
+		stream >> number_l;
+		*this = number_l;
+		if (!stream.eof ())
 		{
-			stream >> number_l;
-			*this = number_l;
-			if (!stream.eof ())
-			{
-				error = true;
-			}
-		}
-		catch (std::runtime_error &)
-		{
-			error = true;
+			return true;
 		}
 	}
-	else
+	catch (std::runtime_error &)
 	{
-		error = true;
+		return true;
 	}
-	return error;
+
+	return false;
 }
 
 void nano::uint256_union::encode_dec (std::string & text) const
@@ -255,26 +254,29 @@ void nano::uint256_union::encode_dec (std::string & text) const
 bool nano::uint256_union::decode_dec (std::string const & text)
 {
 	auto error (text.size () > 78 || (text.size () > 1 && text.front () == '0') || (!text.empty () && text.front () == '-'));
-	if (!error)
+	if (error)
 	{
-		std::stringstream stream (text);
-		stream << std::dec << std::noshowbase;
-		nano::uint256_t number_l;
-		try
+		return true;
+	}
+
+	std::stringstream stream (text);
+	stream << std::dec << std::noshowbase;
+	nano::uint256_t number_l;
+	try
+	{
+		stream >> number_l;
+		*this = number_l;
+		if (!stream.eof ())
 		{
-			stream >> number_l;
-			*this = number_l;
-			if (!stream.eof ())
-			{
-				error = true;
-			}
-		}
-		catch (std::runtime_error &)
-		{
-			error = true;
+			return true;
 		}
 	}
-	return error;
+	catch (std::runtime_error &)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 nano::uint256_union::uint256_union (uint64_t value0)
@@ -334,26 +336,29 @@ void nano::uint512_union::encode_hex (std::string & text) const
 bool nano::uint512_union::decode_hex (std::string const & text)
 {
 	auto error (text.size () > 128);
-	if (!error)
+	if (error)
 	{
-		std::stringstream stream (text);
-		stream << std::hex << std::noshowbase;
-		nano::uint512_t number_l;
-		try
+		return true;
+	}
+
+	std::stringstream stream (text);
+	stream << std::hex << std::noshowbase;
+	nano::uint512_t number_l;
+	try
+	{
+		stream >> number_l;
+		*this = number_l;
+		if (!stream.eof ())
 		{
-			stream >> number_l;
-			*this = number_l;
-			if (!stream.eof ())
-			{
-				error = true;
-			}
-		}
-		catch (std::runtime_error &)
-		{
-			error = true;
+			return true;
 		}
 	}
-	return error;
+	catch (std::runtime_error &)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 bool nano::uint512_union::operator!= (nano::uint512_union const & other_a) const
@@ -495,26 +500,29 @@ void nano::uint128_union::encode_hex (std::string & text) const
 bool nano::uint128_union::decode_hex (std::string const & text)
 {
 	auto error (text.size () > 32);
-	if (!error)
+	if (error)
 	{
-		std::stringstream stream (text);
-		stream << std::hex << std::noshowbase;
-		nano::uint128_t number_l;
-		try
+		return true;
+	}
+
+	std::stringstream stream (text);
+	stream << std::hex << std::noshowbase;
+	nano::uint128_t number_l;
+	try
+	{
+		stream >> number_l;
+		*this = number_l;
+		if (!stream.eof ())
 		{
-			stream >> number_l;
-			*this = number_l;
-			if (!stream.eof ())
-			{
-				error = true;
-			}
-		}
-		catch (std::runtime_error &)
-		{
-			error = true;
+			return true;
 		}
 	}
-	return error;
+	catch (std::runtime_error &)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 void nano::uint128_union::encode_dec (std::string & text) const
@@ -529,106 +537,126 @@ void nano::uint128_union::encode_dec (std::string & text) const
 bool nano::uint128_union::decode_dec (std::string const & text, bool decimal)
 {
 	auto error (text.size () > 39 || (text.size () > 1 && text.front () == '0' && !decimal) || (!text.empty () && text.front () == '-'));
-	if (!error)
+	if (error)
 	{
-		std::stringstream stream (text);
-		stream << std::dec << std::noshowbase;
-		boost::multiprecision::checked_uint128_t number_l;
-		try
+		return true;
+	}
+
+	std::stringstream stream (text);
+	stream << std::dec << std::noshowbase;
+	boost::multiprecision::checked_uint128_t number_l;
+	try
+	{
+		stream >> number_l;
+		nano::uint128_t unchecked (number_l);
+		*this = unchecked;
+		if (!stream.eof ())
 		{
-			stream >> number_l;
-			nano::uint128_t unchecked (number_l);
-			*this = unchecked;
-			if (!stream.eof ())
-			{
-				error = true;
-			}
-		}
-		catch (std::runtime_error &)
-		{
-			error = true;
+			return true;
 		}
 	}
-	return error;
+	catch (std::runtime_error &)
+	{
+		return true;
+	}
+
+	return false;
 }
 
 bool nano::uint128_union::decode_dec (std::string const & text, nano::uint128_t scale)
 {
 	bool error (text.size () > 40 || (!text.empty () && text.front () == '-'));
-	if (!error)
+	if (error)
 	{
-		auto delimiter_position (text.find (".")); // Dot delimiter hardcoded until decision for supporting other locales
-		if (delimiter_position == std::string::npos)
-		{
-			nano::uint128_union integer;
-			error = integer.decode_dec (text);
-			if (!error)
-			{
-				// Overflow check
-				try
-				{
-					auto result (boost::multiprecision::checked_uint128_t (integer.number ()) * boost::multiprecision::checked_uint128_t (scale));
-					error = (result > std::numeric_limits<nano::uint128_t>::max ());
-					if (!error)
-					{
-						*this = nano::uint128_t (result);
-					}
-				}
-				catch (std::overflow_error &)
-				{
-					error = true;
-				}
-			}
-		}
-		else
-		{
-			nano::uint128_union integer_part;
-			std::string integer_text (text.substr (0, delimiter_position));
-			error = (integer_text.empty () || integer_part.decode_dec (integer_text));
-			if (!error)
-			{
-				// Overflow check
-				try
-				{
-					error = ((boost::multiprecision::checked_uint128_t (integer_part.number ()) * boost::multiprecision::checked_uint128_t (scale)) > std::numeric_limits<nano::uint128_t>::max ());
-				}
-				catch (std::overflow_error &)
-				{
-					error = true;
-				}
-				if (!error)
-				{
-					nano::uint128_union decimal_part;
-					std::string decimal_text (text.substr (delimiter_position + 1, text.length ()));
-					error = (decimal_text.empty () || decimal_part.decode_dec (decimal_text, true));
-					if (!error)
-					{
-						// Overflow check
-						auto scale_length (scale.convert_to<std::string> ().length ());
-						error = (scale_length <= decimal_text.length ());
-						if (!error)
-						{
-							auto base10 = boost::multiprecision::cpp_int (10);
-							release_assert ((scale_length - decimal_text.length () - 1) <= std::numeric_limits<unsigned>::max ());
-							auto pow10 = boost::multiprecision::pow (base10, static_cast<unsigned> (scale_length - decimal_text.length () - 1));
-							auto decimal_part_num = decimal_part.number ();
-							auto integer_part_scaled = integer_part.number () * scale;
-							auto decimal_part_mult_pow = decimal_part_num * pow10;
-							auto result = integer_part_scaled + decimal_part_mult_pow;
+		return true;
+	}
 
-							// Overflow check
-							error = (result > std::numeric_limits<nano::uint128_t>::max ());
-							if (!error)
-							{
-								*this = nano::uint128_t (result);
-							}
-						}
-					}
-				}
+	auto const delimiter_position (text.find ('.')); // Dot delimiter hardcoded until decision for supporting other locales
+	if (delimiter_position == std::string::npos)
+	{
+		nano::uint128_union integer;
+		error = integer.decode_dec (text);
+		if (error)
+		{
+			return true;
+		}
+
+		// Overflow check
+		try
+		{
+			auto const result (boost::multiprecision::checked_uint128_t (integer.number ()) * boost::multiprecision::checked_uint128_t (scale));
+			error = (result > std::numeric_limits<nano::uint128_t>::max ());
+			if (error)
+			{
+				return true;
 			}
+
+			*this = nano::uint128_t (result);
+		}
+		catch (std::overflow_error &)
+		{
+			return true;
 		}
 	}
-	return error;
+	else
+	{
+		nano::uint128_union integer_part;
+		std::string const integer_text (text.substr (0, delimiter_position));
+		error = (integer_text.empty () || integer_part.decode_dec (integer_text));
+		if (error)
+		{
+			return true;
+		}
+
+		// Overflow check
+		try
+		{
+			error = ((boost::multiprecision::checked_uint128_t (integer_part.number ()) * boost::multiprecision::checked_uint128_t (scale)) > std::numeric_limits<nano::uint128_t>::max ());
+		}
+		catch (std::overflow_error &)
+		{
+			return true;
+		}
+		if (error)
+		{
+			return true;
+		}
+
+		nano::uint128_union decimal_part;
+		std::string const decimal_text (text.substr (delimiter_position + 1, text.length ()));
+		error = (decimal_text.empty () || decimal_part.decode_dec (decimal_text, true));
+		if (error)
+		{
+			return true;
+		}
+
+		// Overflow check
+		auto const scale_length (scale.convert_to<std::string> ().length ());
+		error = (scale_length <= decimal_text.length ());
+		if (error)
+		{
+			return true;
+		}
+
+		auto const base10 = boost::multiprecision::cpp_int (10);
+		release_assert ((scale_length - decimal_text.length () - 1) <= std::numeric_limits<unsigned>::max ());
+		auto const pow10 = boost::multiprecision::pow (base10, static_cast<unsigned> (scale_length - decimal_text.length () - 1));
+		auto const decimal_part_num = decimal_part.number ();
+		auto const integer_part_scaled = integer_part.number () * scale;
+		auto const decimal_part_mult_pow = decimal_part_num * pow10;
+		auto const result = integer_part_scaled + decimal_part_mult_pow;
+
+		// Overflow check
+		error = (result > std::numeric_limits<nano::uint128_t>::max ());
+		if (error)
+		{
+			return true;
+		}
+
+		*this = nano::uint128_t (result);
+	}
+
+	return false;
 }
 
 void format_frac (std::ostringstream & stream, nano::uint128_t value, nano::uint128_t scale, int precision)
@@ -857,30 +885,34 @@ std::string nano::to_string_hex (uint64_t const value_a)
 bool nano::from_string_hex (std::string const & value_a, uint64_t & target_a)
 {
 	auto error (value_a.empty ());
-	if (!error)
+	if (error)
 	{
-		error = value_a.size () > 16;
-		if (!error)
+		return true;
+	}
+
+	error = value_a.size () > 16;
+	if (error)
+	{
+		return true;
+	}
+
+	std::stringstream stream (value_a);
+	stream << std::hex << std::noshowbase;
+	try
+	{
+		uint64_t number_l;
+		stream >> number_l;
+		target_a = number_l;
+		if (!stream.eof ())
 		{
-			std::stringstream stream (value_a);
-			stream << std::hex << std::noshowbase;
-			try
-			{
-				uint64_t number_l;
-				stream >> number_l;
-				target_a = number_l;
-				if (!stream.eof ())
-				{
-					error = true;
-				}
-			}
-			catch (std::runtime_error &)
-			{
-				error = true;
-			}
+			return true;
 		}
 	}
-	return error;
+	catch (std::runtime_error &)
+	{
+		return true;
+	}
+	return false;
 }
 
 std::string nano::to_string (double const value_a, int const precision_a)

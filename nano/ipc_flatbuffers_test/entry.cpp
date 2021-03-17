@@ -26,15 +26,15 @@ void read_message_loop (std::shared_ptr<nano::ipc::ipc_client> const & connectio
 			}
 			else
 			{
-				auto envelope (nanoapi::GetEnvelope (buffer->data ()));
+				auto const envelope (nanoapi::GetEnvelope (buffer->data ()));
 				if (envelope->message_type () == nanoapi::Message_EventConfirmation)
 				{
 					std::cout << "Confirmation at " << envelope->time () << std::endl;
-					auto conf (envelope->message_as_EventConfirmation ());
+					auto const conf (envelope->message_as_EventConfirmation ());
 					std::cout << "  Account    : " << conf->account ()->str () << std::endl;
 					std::cout << "  Amount     : " << conf->amount ()->str () << std::endl;
 					std::cout << "  Block type : " << nanoapi::EnumNamesBlock ()[conf->block_type ()] << std::endl;
-					auto state_block = conf->block_as_BlockState ();
+					auto const state_block = conf->block_as_BlockState ();
 					if (state_block)
 					{
 						std::cout << "  Balance    : " << state_block->balance ()->str () << std::endl;
@@ -55,8 +55,8 @@ int main (int argc, char * const * argv)
 	auto connection (std::make_shared<nano::ipc::ipc_client> (io_ctx));
 	// The client only connects to a local live node for now; the test will
 	// be improved later to handle various options, including port and address.
-	std::string ipc_address = "::1";
-	uint16_t ipc_port = 7077;
+	std::string const ipc_address = "::1";
+	uint16_t const ipc_port = 7077;
 	connection->async_connect (ipc_address, ipc_port, [connection](nano::error err) {
 		if (!err)
 		{

@@ -181,11 +181,11 @@ std::error_code check_fields_set (uint8_t block_all_flags, uint8_t build_state)
 	// Figure out which fields are not set. Note that static typing ensures we cannot set values
 	// not applicable to a given block type, we can only forget to set fields. This will be zero
 	// if all fields are set and thus succeed.
-	uint8_t res = block_all_flags ^ build_state;
+	uint8_t const res = block_all_flags ^ build_state;
 	if (res)
 	{
 		// Convert the first bit set to a field mask and look up the error code.
-		auto build_flags_mask = static_cast<uint8_t> (ffs_mask (res));
+		auto const build_flags_mask = static_cast<uint8_t> (ffs_mask (res));
 		debug_assert (ec_map.find (build_flags_mask) != ec_map.end ());
 		ec = ec_map[build_flags_mask];
 	}

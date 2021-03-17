@@ -45,7 +45,7 @@ public:
 	}
 
 private:
-	const nano::transaction_impl * transaction_impl;
+	nano::transaction_impl const * transaction_impl;
 };
 }
 

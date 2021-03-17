@@ -12,12 +12,12 @@
 
 namespace
 {
-const char * preconfigured_peers_key = "preconfigured_peers";
-const char * signature_checker_threads_key = "signature_checker_threads";
-const char * pow_sleep_interval_key = "pow_sleep_interval";
-const char * default_beta_peer_network = "peering-beta.nano.org";
-const char * default_live_peer_network = "peering.nano.org";
-const std::string default_test_peer_network = nano::get_env_or_default ("NANO_TEST_PEER_NETWORK", "peering-test.nano.org");
+char const * preconfigured_peers_key = "preconfigured_peers";
+char const * signature_checker_threads_key = "signature_checker_threads";
+char const * pow_sleep_interval_key = "pow_sleep_interval";
+char const * default_beta_peer_network = "peering-beta.nano.org";
+char const * default_live_peer_network = "peering.nano.org";
+std::string const default_test_peer_network = nano::get_env_or_default ("NANO_TEST_PEER_NETWORK", "peering-test.nano.org");
 }
 
 nano::node_config::node_config () :

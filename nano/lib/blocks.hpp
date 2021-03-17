@@ -34,7 +34,7 @@ class block_details
 
 public:
 	block_details () = default;
-	block_details (nano::epoch const epoch_a, bool const is_send_a, bool const is_receive_a, bool const is_epoch_a);
+	block_details (nano::epoch epoch_a, bool is_send_a, bool is_receive_a, bool is_epoch_a);
 	static constexpr size_t size ()
 	{
 		return 1;
@@ -52,14 +52,14 @@ private:
 	void unpack (uint8_t);
 };
 
-std::string state_subtype (nano::block_details const);
+std::string state_subtype (nano::block_details);
 
 class block_sideband final
 {
 public:
 	block_sideband () = default;
-	block_sideband (nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t const, uint64_t const, nano::block_details const &, nano::epoch const source_epoch_a);
-	block_sideband (nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t const, uint64_t const, nano::epoch const epoch_a, bool const is_send, bool const is_receive, bool const is_epoch, nano::epoch const source_epoch_a);
+	block_sideband (nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t, uint64_t, nano::block_details const &, nano::epoch source_epoch_a);
+	block_sideband (nano::account const &, nano::block_hash const &, nano::amount const &, uint64_t, uint64_t, nano::epoch epoch_a, bool is_send, bool is_receive, bool is_epoch, nano::epoch source_epoch_a);
 	void serialize (nano::stream &, nano::block_type) const;
 	bool deserialize (nano::stream &, nano::block_type);
 	static size_t size (nano::block_type);
