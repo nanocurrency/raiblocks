@@ -8,18 +8,14 @@
 
 #include <limits>
 
-nano::socket::socket (nano::node & node_a, boost::optional<std::chrono::seconds> io_timeout_a) :
+nano::socket::socket (nano::node & node_a) :
 strand{ node_a.io_ctx.get_executor () },
 tcp_socket{ node_a.io_ctx },
 node{ node_a },
 next_deadline{ std::numeric_limits<uint64_t>::max () },
 last_completion_time{ 0 },
-io_timeout{ io_timeout_a }
+io_timeout{ node_a.config.tcp_io_timeout }
 {
-	if (!io_timeout)
-	{
-		io_timeout = node_a.config.tcp_io_timeout;
-	}
 }
 
 nano::socket::~socket ()
@@ -108,7 +104,7 @@ void nano::socket::async_write (nano::shared_const_buffer const & buffer_a, std:
 
 void nano::socket::start_timer ()
 {
-	start_timer (io_timeout.get ());
+	start_timer (io_timeout);
 }
 
 void nano::socket::start_timer (std::chrono::seconds deadline_a)
@@ -156,12 +152,9 @@ bool nano::socket::has_timed_out () const
 	return timed_out;
 }
 
-void nano::socket::set_timeout (std::chrono::seconds io_timeout_a)
+void nano::socket::timeout_set (std::chrono::seconds io_timeout_a)
 {
-	auto this_l (shared_from_this ());
-	boost::asio::dispatch (strand, boost::asio::bind_executor (strand, [this_l, io_timeout_a]() {
-		this_l->io_timeout = io_timeout_a;
-	}));
+	io_timeout = io_timeout_a;
 }
 
 void nano::socket::close ()
@@ -177,7 +170,7 @@ void nano::socket::close_internal ()
 {
 	if (!closed.exchange (true))
 	{
-		io_timeout = boost::none;
+		io_timeout = std::chrono::seconds (0);
 		boost::system::error_code ec;
 
 		// Ignore error code for shutdown as it is best-effort
@@ -197,11 +190,12 @@ nano::tcp_endpoint nano::socket::remote_endpoint () const
 }
 
 nano::server_socket::server_socket (nano::node & node_a, boost::asio::ip::tcp::endpoint local_a, size_t max_connections_a) :
-socket{ node_a, std::chrono::seconds::max () },
+socket{ node_a },
 acceptor{ node_a.io_ctx },
 local{ local_a },
 max_inbound_connections{ max_connections_a }
 {
+	io_timeout = std::chrono::seconds::max ();
 }
 
 void nano::server_socket::start (boost::system::error_code & ec_a)
@@ -243,7 +237,7 @@ void nano::server_socket::on_connection (std::function<bool(std::shared_ptr<nano
 			if (this_l->connections.size () < this_l->max_inbound_connections)
 			{
 				// Prepare new connection
-				auto new_connection = std::make_shared<nano::socket> (this_l->node, boost::none);
+				auto new_connection = std::make_shared<nano::socket> (this_l->node);
 				this_l->acceptor.async_accept (new_connection->tcp_socket, new_connection->remote,
 				boost::asio::bind_executor (this_l->strand,
 				[this_l, new_connection, callback_a](boost::system::error_code const & ec_a) {

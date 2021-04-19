@@ -39,7 +39,7 @@ public:
 	 * @param io_timeout If tcp async operation is not completed within the timeout, the socket is closed. If not set, the tcp_io_timeout config option is used.
 	 * @param concurrency write concurrency
 	 */
-	explicit socket (nano::node & node, boost::optional<std::chrono::seconds> io_timeout = boost::none);
+	explicit socket (nano::node & node);
 	virtual ~socket ();
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void(boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, size_t, std::function<void(boost::system::error_code const &, size_t)>);
@@ -50,7 +50,7 @@ public:
 	/** Returns true if the socket has timed out */
 	bool has_timed_out () const;
 	/** This can be called to change the maximum idle time, e.g. based on the type of traffic detected. */
-	void set_timeout (std::chrono::seconds io_timeout_a);
+	void timeout_set (std::chrono::seconds io_timeout_a);
 	void start_timer (std::chrono::seconds deadline_a);
 	bool max () const
 	{
@@ -80,7 +80,7 @@ protected:
 	std::atomic<uint64_t> next_deadline;
 	std::atomic<uint64_t> last_completion_time;
 	std::atomic<bool> timed_out{ false };
-	boost::optional<std::chrono::seconds> io_timeout;
+	std::atomic<std::chrono::seconds> io_timeout;
 	std::atomic<size_t> queue_size{ 0 };
 
 	/** Set by close() - completion handlers must check this. This is more reliable than checking

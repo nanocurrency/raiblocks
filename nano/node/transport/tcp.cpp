@@ -552,7 +552,7 @@ void nano::transport::tcp_channels::start_tcp (nano::endpoint const & endpoint_a
 		node.network.tcp_channels.udp_fallback (endpoint_a, callback_a);
 		return;
 	}
-	auto socket = std::make_shared<nano::socket> (node, boost::none);
+	auto socket = std::make_shared<nano::socket> (node);
 	std::weak_ptr<nano::socket> socket_w (socket);
 	auto channel (std::make_shared<nano::transport::channel_tcp> (node, socket_w));
 	std::weak_ptr<nano::node> node_w (node.shared ());
