@@ -39,7 +39,7 @@ public:
 	 * @param io_timeout If tcp async operation is not completed within the timeout, the socket is closed. If not set, the tcp_io_timeout config option is used.
 	 * @param concurrency write concurrency
 	 */
-	explicit socket (nano::node & node, boost::optional<std::chrono::seconds> io_timeout = boost::none);
+	explicit socket (nano::node & node);
 	virtual ~socket ();
 	void async_connect (boost::asio::ip::tcp::endpoint const &, std::function<void(boost::system::error_code const &)>);
 	void async_read (std::shared_ptr<std::vector<uint8_t>> const &, size_t, std::function<void(boost::system::error_code const &, size_t)>);
@@ -49,9 +49,6 @@ public:
 	boost::asio::ip::tcp::endpoint remote_endpoint () const;
 	/** Returns true if the socket has timed out */
 	bool has_timed_out () const;
-	/** This can be called to change the maximum idle time, e.g. based on the type of traffic detected. */
-	void set_timeout (std::chrono::seconds io_timeout_a);
-	void start_timer (std::chrono::seconds deadline_a);
 	bool max () const
 	{
 		return queue_size >= queue_size_max;
@@ -77,22 +74,36 @@ protected:
 	/** The other end of the connection */
 	boost::asio::ip::tcp::endpoint remote;
 
-	std::atomic<uint64_t> next_deadline;
-	std::atomic<uint64_t> last_completion_time;
+	std::atomic<uint64_t> deadline_next{ std::numeric_limits<uint64_t>::max () };
 	std::atomic<bool> timed_out{ false };
-	boost::optional<std::chrono::seconds> io_timeout;
 	std::atomic<size_t> queue_size{ 0 };
 
 	/** Set by close() - completion handlers must check this. This is more reliable than checking
 	 error codes as the OS may have already completed the async operation. */
 	std::atomic<bool> closed{ false };
 	void close_internal ();
-	void start_timer ();
-	void stop_timer ();
 	void checkup ();
+	void deadline_start ();
 
 public:
 	static size_t constexpr queue_size_max = 128;
+	class timer
+	{
+		// Non-copyable
+		timer (nano::socket::timer &) = delete;
+		timer & operator= (nano::socket::timer const &) = delete;
+
+	public:
+		timer (std::shared_ptr<nano::socket> socket_a);
+		timer (nano::socket::timer && other_a);
+		~timer ();
+		void release ();
+
+	private:
+		std::shared_ptr<nano::socket> socket;
+		std::chrono::seconds idle;
+		uint64_t value;
+	};
 };
 
 /** Socket class for TCP servers */

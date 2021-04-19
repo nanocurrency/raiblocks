@@ -97,7 +97,6 @@ void nano::bootstrap_connections::pool_connection (std::shared_ptr<nano::bootstr
 	auto const & socket_l = client_a->socket;
 	if (!stopped && !client_a->pending_stop && !node.network.excluded_peers.check (client_a->channel->get_tcp_endpoint ()))
 	{
-		socket_l->start_timer (node.network_params.node.idle_timeout);
 		// Push into idle deque
 		if (!push_front)
 		{
