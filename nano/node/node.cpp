@@ -123,7 +123,7 @@ history{ config.network_params.voting },
 vote_uniquer (block_uniquer),
 confirmation_height_processor (ledger, write_database_queue, config.conf_height_processor_batch_min_time, config.logging, logger, node_initialized_latch, flags.confirmation_height_processor_mode),
 active (*this, confirmation_height_processor),
-aggregator (network_params.network, config, stats, active.generator, history, ledger, wallets, active),
+aggregator (*this, network_params.network, config, stats, active.generator, history, ledger, wallets, active),
 wallets (wallets_store.init_error (), *this),
 startup_time (std::chrono::steady_clock::now ()),
 node_seq (seq)

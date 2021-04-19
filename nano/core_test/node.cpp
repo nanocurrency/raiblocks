@@ -2745,7 +2745,7 @@ TEST (node, local_votes_cache)
 	{
 		ASSERT_NO_ERROR (system.poll (node.aggregator.max_delay));
 	}
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 3);
+	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes)+node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_cached_late_votes) == 3);
 	ASSERT_FALSE (node.history.votes (send1->root (), send1->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (send2->root (), send2->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (send3->root (), send3->hash ()).empty ());
@@ -2857,7 +2857,7 @@ TEST (node, local_votes_cache_generate_new_vote)
 	auto votes2 (node.history.votes (send1->root (), send1->hash ()));
 	ASSERT_EQ (1, votes2.size ());
 	ASSERT_EQ (1, votes2[0]->blocks.size ());
-	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes) == 2);
+	ASSERT_TIMELY (3s, node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_generated_votes)+node.stats.count (nano::stat::type::requests, nano::stat::detail::requests_cached_late_votes) == 2);
 	ASSERT_FALSE (node.history.votes (genesis.open->root (), genesis.open->hash ()).empty ());
 	ASSERT_FALSE (node.history.votes (send1->root (), send1->hash ()).empty ());
 	// First generated + again cached + new generated

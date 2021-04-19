@@ -748,6 +748,9 @@ std::string nano::stat::detail_to_string (uint32_t key)
 		case nano::stat::detail::election_restart:
 			res = "election_restart";
 			break;
+		case nano::stat::detail::election_request_aggregator:
+			res = "election_request_aggregator";
+			break;
 		case nano::stat::detail::blocking:
 			res = "blocking";
 			break;

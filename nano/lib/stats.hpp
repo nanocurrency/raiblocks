@@ -321,6 +321,7 @@ public:
 		election_difficulty_update,
 		election_drop,
 		election_restart,
+		election_request_aggregator,
 
 		// udp
 		blocking,

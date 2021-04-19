@@ -17,6 +17,7 @@ namespace mi = boost::multi_index;
 
 namespace nano
 {
+class node;
 class active_transactions;
 class ledger;
 class local_vote_history;
@@ -59,7 +60,7 @@ class request_aggregator final
 	// clang-format on
 
 public:
-	request_aggregator (nano::network_constants const &, nano::node_config const & config, nano::stat & stats_a, nano::vote_generator &, nano::local_vote_history &, nano::ledger &, nano::wallets &, nano::active_transactions &);
+	request_aggregator (nano::node &, nano::network_constants const &, nano::node_config const & config, nano::stat & stats_a, nano::vote_generator &, nano::local_vote_history &, nano::ledger &, nano::wallets &, nano::active_transactions &);
 
 	/** Add a new request by \p channel_a for hashes \p hashes_roots_a */
 	void add (std::shared_ptr<nano::transport::channel> const & channel_a, std::vector<std::pair<nano::block_hash, nano::root>> const & hashes_roots_a);
@@ -80,6 +81,7 @@ private:
 	std::vector<std::shared_ptr<nano::block>> aggregate (std::vector<std::pair<nano::block_hash, nano::root>> const & requests_a, std::shared_ptr<nano::transport::channel> & channel_a) const;
 	void reply_action (std::shared_ptr<nano::vote> const & vote_a, std::shared_ptr<nano::transport::channel> const & channel_a) const;
 
+	nano::node & node;
 	nano::stat & stats;
 	nano::local_vote_history & local_votes;
 	nano::ledger & ledger;
