@@ -5057,6 +5057,49 @@ TEST (rpc, unchecked_clear)
 	ASSERT_TIMELY (10s, node->store.unchecked.count (node->store.tx_begin_read ()) == 0);
 }
 
+TEST (rpc, unchecked_keys)
+{
+	nano::system system;
+	auto & node = add_ipc_enabled_node (system);
+	auto [rpc, rpc_ctx] = add_rpc (system, node);
+	nano::keypair key;
+	auto open (std::make_shared<nano::state_block> (key.pub, 0, key.pub, 1, 3, key.prv, key.pub, *system.work.generate (key.pub)));
+	auto open2 (std::make_shared<nano::state_block> (key.pub, 0, key.pub, 2, 4, key.prv, key.pub, *system.work.generate (key.pub)));
+	node->process_active (open);
+	node->process_active (open2);
+	node->block_processor.flush ();
+	boost::property_tree::ptree request;
+	request.put ("action", "unchecked_keys");
+	request.put ("count", 2);
+	request.put ("json_block", true);
+	{
+		test_response response (request, rpc->config.port, system.io_ctx);
+		ASSERT_TIMELY (5s, response.status != 0);
+		ASSERT_EQ (200, response.status);
+		auto & unchecked_node (response.json.get_child ("unchecked"));
+		ASSERT_EQ (2, unchecked_node.size ());
+		std::vector<std::tuple<std::string, std::string, std::string, boost::property_tree::ptree>> unchecked_l;
+		for (auto i (unchecked_node.begin ()), n (unchecked_node.end ()); i != n; ++i)
+		{
+			unchecked_l.push_back (std::make_tuple (i->second.get<std::string> ("key"), i->second.get<std::string> ("hash"), i->second.get<std::string> ("modified_timestamp"), i->second.get_child ("contents")));
+		}
+		for (auto & item : unchecked_l)
+		{
+			if (std::get<1> (item) == open->hash ().to_string ())
+			{
+				ASSERT_EQ (open->link ().to_string (), std::get<0> (item));
+				ASSERT_EQ (open->hash ().to_string (), std::get<1> (item));
+			}
+			else
+			{
+				ASSERT_EQ (open2->link ().to_string (), std::get<0> (item));
+				ASSERT_EQ (open2->hash ().to_string (), std::get<1> (item));
+			}
+			ASSERT_EQ ("state", std::get<3> (item).get<std::string> ("type"));
+		}
+	}
+}
+
 TEST (rpc, unopened)
 {
 	nano::system system;
