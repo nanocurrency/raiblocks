@@ -4,7 +4,7 @@
 [submodule "lmdb"]
 	path = lmdb
 	url = https://github.com/nanocurrency/lmdb.git
-	branch = lmdb_0_9_23
+	branch = lmdb_0_9_29
 [submodule "crypto/cryptopp"]
 	path = crypto/cryptopp
 	url = https://github.com/weidai11/cryptopp.git
