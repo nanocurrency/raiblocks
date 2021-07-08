@@ -47,7 +47,12 @@ add_executable(
   wallet.cpp
   wallets.cpp
   websocket.cpp
-  work_pool.cpp)
+  work_pool.cpp
+  diskhash_test/cpp_wrapper_tests
+  diskhash_test/entry.cpp
+  diskhash_test/helper_functions.cpp
+  diskhash_test/cpp_wrapper_tests.cpp
+)
 
 target_compile_definitions(
   core_test PRIVATE -DTAG_VERSION_STRING=${TAG_VERSION_STRING}
@@ -62,4 +67,8 @@ target_link_libraries(
   libminiupnpc-static
   Boost::log_setup
   Boost::log
-  Boost::boost)
+  Boost::boost
+    diskhash
+    Boost::filesystem
+    Boost::system
+)

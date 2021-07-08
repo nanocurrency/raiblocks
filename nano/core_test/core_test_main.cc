@@ -4,6 +4,7 @@
 #include <nano/node/logging.hpp>
 
 #include <boost/filesystem/path.hpp>
+#include <nano/core_test/diskhash_test/helper_functions.hpp>
 
 namespace nano
 {
@@ -23,5 +24,6 @@ GTEST_API_ int main (int argc, char ** argv)
 	testing::InitGoogleTest (&argc, argv);
 	auto res = RUN_ALL_TESTS ();
 	nano::cleanup_dev_directories_on_exit ();
+	delete_temp_db_path (get_temp_path());
 	return res;
 }
