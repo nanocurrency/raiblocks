@@ -52,5 +52,7 @@ public:
 	std::unique_ptr<nano::frontier_req> request;
 	size_t count;
 	std::deque<std::pair<nano::account, nano::block_hash>> accounts;
+	/** The maximum number of records to be read in while iterating over long frontier requests */
+	static uint64_t constexpr batch_read_size = 128 * 1024;
 };
 }

@@ -385,6 +385,35 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	ASSERT_EQ (0, node1->stats.count (nano::stat::type::bootstrap, nano::stat::detail::bulk_pull_failed_account, nano::stat::dir::in)); // Requeue is not increasing failed attempts
 }
 
+TEST (bootstrap_processor, pull_disconnected_acount_config)
+{
+	nano::system system;
+	nano::node_config config (nano::get_available_port (), system.logging);
+	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
+	config.bootstrap_disconnected_accounts_percent = 0;
+	nano::node_flags node_flags;
+	node_flags.disable_bootstrap_bulk_push_client = true;
+	auto node0 (system.add_node (config, node_flags));
+	nano::keypair key;
+	auto send1 (std::make_shared<nano::send_block> (node0->latest (nano::dev_genesis_key.pub), key.pub, 0, nano::dev_genesis_key.prv, nano::dev_genesis_key.pub, *system.work.generate (node0->latest (nano::dev_genesis_key.pub))));
+	ASSERT_EQ (nano::process_result::progress, node0->process (*send1).code);
+	auto open (std::make_shared<nano::open_block> (send1->hash (), 1, key.pub, key.prv, key.pub, *system.work.generate (key.pub)));
+	ASSERT_EQ (nano::process_result::progress, node0->process (*open).code);
+	auto node1 (std::make_shared<nano::node> (system.io_ctx, nano::get_available_port (), nano::unique_path (), system.logging, system.work));
+	ASSERT_FALSE (node1->init_error ());
+	node1->bootstrap_initiator.bootstrap (node0->network.endpoint (), false);
+	// Node1 cannot receive open block because account has only 1 block
+	ASSERT_TIMELY (15s, !node1->bootstrap_initiator.in_progress ());
+	ASSERT_TRUE (node1->store.block.exists (node1->store.tx_begin_read (), send1->hash ()));
+	ASSERT_FALSE (node1->store.block.exists (node1->store.tx_begin_read (), open->hash ()));
+	// Crearte second block
+	auto send2 (std::make_shared<nano::send_block> (open->hash (), nano::dev_genesis_key.pub, std::numeric_limits<nano::uint128_t>::max () - 100, key.prv, key.pub, *system.work.generate (open->hash ())));
+	ASSERT_EQ (nano::process_result::progress, node0->process (*send2).code);
+	node1->bootstrap_initiator.bootstrap (node0->network.endpoint (), false);
+	ASSERT_TIMELY (10s, node1->store.block.exists (node1->store.tx_begin_read (), send2->hash ()));
+	node1->stop ();
+}
+
 TEST (bootstrap_processor, push_diamond)
 {
 	nano::system system;
