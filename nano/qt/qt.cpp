@@ -571,6 +571,7 @@ public:
 		auto balance (block_a.hashables.balance.number ());
 		bool error_or_pruned (false);
 		auto previous_balance (ledger.balance_safe (transaction, block_a.hashables.previous, error_or_pruned));
+		std::cerr << "prev: " << block_a.hashables.previous.to_string () << previous_balance << " current: " << balance << '\n';
 		if (error_or_pruned)
 		{
 			type = "Unknown (pruned)";
