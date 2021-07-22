@@ -136,7 +136,7 @@ public:
 		release_assert_success (store, status);
 	}
 
-	bool exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) override
+	bool exists (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override
 	{
 		auto junk = block_raw_get (transaction_a, hash_a);
 		return junk.size () != 0;
@@ -149,6 +149,7 @@ public:
 
 	nano::account account (nano::transaction const & transaction_a, nano::block_hash const & hash_a) const override
 	{
+		debug_assert (exists (transaction_a, hash_a));
 		auto block (get (transaction_a, hash_a));
 		debug_assert (block != nullptr);
 		return account_calculated (*block);

@@ -798,7 +798,7 @@ public:
 	virtual std::shared_ptr<nano::block> get_no_sideband (nano::transaction const &, nano::block_hash const &) const = 0;
 	virtual std::shared_ptr<nano::block> random (nano::transaction const &) = 0;
 	virtual void del (nano::write_transaction const &, nano::block_hash const &) = 0;
-	virtual bool exists (nano::transaction const &, nano::block_hash const &) = 0;
+	virtual bool exists (nano::transaction const &, nano::block_hash const &) const = 0;
 	virtual uint64_t count (nano::transaction const &) = 0;
 	virtual nano::account account (nano::transaction const &, nano::block_hash const &) const = 0;
 	virtual nano::account account_calculated (nano::block const &) const = 0;
