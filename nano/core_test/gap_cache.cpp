@@ -91,8 +91,7 @@ TEST (gap_cache, two_dependencies)
 	nano::system system (1);
 	auto & node1 (*system.nodes[0]);
 	nano::keypair key;
-	nano::genesis genesis;
-	auto send1 (std::make_shared<nano::send_block> (genesis.hash (), key.pub, 1, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (genesis.hash ())));
+	auto send1 (std::make_shared<nano::send_block> (nano::dev::genesis->hash (), key.pub, 1, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (nano::dev::genesis->hash ())));
 	auto send2 (std::make_shared<nano::send_block> (send1->hash (), key.pub, 0, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (send1->hash ())));
 	auto open (std::make_shared<nano::open_block> (send1->hash (), key.pub, key.pub, key.prv, key.pub, *system.work.generate (key.pub)));
 	ASSERT_EQ (0, node1.gap_cache.size ());

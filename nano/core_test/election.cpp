@@ -9,12 +9,10 @@ using namespace std::chrono_literals;
 TEST (election, construction)
 {
 	nano::system system (1);
-	nano::genesis genesis;
 	auto & node = *system.nodes[0];
-	genesis.open->sideband_set (nano::block_sideband (nano::dev::genesis->account (), 0, nano::dev::genesis_amount, 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-	node.block_confirm (genesis.open);
+	node.block_confirm (nano::dev::genesis);
 	node.scheduler.flush ();
-	auto election = node.active.election (genesis.open->qualified_root ());
+	auto election = node.active.election (nano::dev::genesis->qualified_root ());
 	election->transition_active ();
 }
 

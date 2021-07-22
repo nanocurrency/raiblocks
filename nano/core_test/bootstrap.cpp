@@ -64,10 +64,9 @@ TEST (bulk_pull, end_not_owned)
 	system.nodes[0]->work_generate_blocking (open);
 	ASSERT_EQ (nano::process_result::progress, system.nodes[0]->process (open).code);
 	auto connection (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*system.nodes[0]), system.nodes[0]));
-	nano::genesis genesis;
 	auto req = std::make_unique<nano::bulk_pull> ();
 	req->start = key2.pub;
-	req->end = genesis.hash ();
+	req->end = nano::dev::genesis->hash ();
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (connection, std::move (req)));
 	ASSERT_EQ (request->current, request->request->end);
@@ -77,10 +76,9 @@ TEST (bulk_pull, none)
 {
 	nano::system system (1);
 	auto connection (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*system.nodes[0]), system.nodes[0]));
-	nano::genesis genesis;
 	auto req = std::make_unique<nano::bulk_pull> ();
 	req->start = nano::dev::genesis_key.pub;
-	req->end = genesis.hash ();
+	req->end = nano::dev::genesis->hash ();
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (connection, std::move (req)));
 	auto block (request->get_next ());
@@ -107,15 +105,14 @@ TEST (bulk_pull, by_block)
 {
 	nano::system system (1);
 	auto connection (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*system.nodes[0]), system.nodes[0]));
-	nano::genesis genesis;
 	auto req = std::make_unique<nano::bulk_pull> ();
-	req->start = genesis.hash ();
+	req->start = nano::dev::genesis->hash ();
 	req->end.clear ();
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (connection, std::move (req)));
 	auto block (request->get_next ());
 	ASSERT_NE (nullptr, block);
-	ASSERT_EQ (block->hash (), genesis.hash ());
+	ASSERT_EQ (block->hash (), nano::dev::genesis->hash ());
 
 	block = request->get_next ();
 	ASSERT_EQ (nullptr, block);
@@ -125,15 +122,14 @@ TEST (bulk_pull, by_block_single)
 {
 	nano::system system (1);
 	auto connection (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*system.nodes[0]), system.nodes[0]));
-	nano::genesis genesis;
 	auto req = std::make_unique<nano::bulk_pull> ();
-	req->start = genesis.hash ();
-	req->end = genesis.hash ();
+	req->start = nano::dev::genesis->hash ();
+	req->end = nano::dev::genesis->hash ();
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::bulk_pull_server> (connection, std::move (req)));
 	auto block (request->get_next ());
 	ASSERT_NE (nullptr, block);
-	ASSERT_EQ (block->hash (), genesis.hash ());
+	ASSERT_EQ (block->hash (), nano::dev::genesis->hash ());
 
 	block = request->get_next ();
 	ASSERT_EQ (nullptr, block);
@@ -143,7 +139,6 @@ TEST (bulk_pull, count_limit)
 {
 	nano::system system (1);
 	auto node0 (system.nodes[0]);
-	nano::genesis genesis;
 
 	auto send1 (std::make_shared<nano::send_block> (node0->latest (nano::dev::genesis_key.pub), nano::dev::genesis_key.pub, 1, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (node0->latest (nano::dev::genesis_key.pub))));
 	ASSERT_EQ (nano::process_result::progress, node0->process (*send1).code);
@@ -248,7 +243,6 @@ TEST (bootstrap_processor, process_state)
 	nano::node_flags node_flags;
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	auto node0 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::state_block_builder builder;
 
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
@@ -353,19 +347,18 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 	auto node1 (system.add_node (config, node_flags));
 	config.peering_port = nano::get_available_port ();
 	auto node2 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::keypair key1;
 
 	nano::state_block_builder builder;
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (genesis.hash ()))
+				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 
 	node1->bootstrap_initiator.bootstrap (node2->network.endpoint ());
@@ -377,7 +370,7 @@ TEST (bootstrap_processor, DISABLED_pull_requeue_network_error)
 		nano::unique_lock<nano::mutex> lock (node1->bootstrap_initiator.connections->mutex);
 		ASSERT_FALSE (attempt->stopped);
 		++attempt->pulling;
-		node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), genesis.hash (), attempt->incremental_id);
+		node1->bootstrap_initiator.connections->pulls.emplace_back (nano::dev::genesis_key.pub, send1->hash (), nano::dev::genesis->hash (), attempt->incremental_id);
 		node1->bootstrap_initiator.connections->request_pull (lock);
 		node2->stop ();
 	}
@@ -486,7 +479,6 @@ TEST (bootstrap_processor, lazy_hash)
 	nano::node_flags node_flags;
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	auto node0 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -495,12 +487,12 @@ TEST (bootstrap_processor, lazy_hash)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -561,7 +553,6 @@ TEST (bootstrap_processor, lazy_hash_bootstrap_id)
 	nano::node_flags node_flags;
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	auto node0 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -570,12 +561,12 @@ TEST (bootstrap_processor, lazy_hash_bootstrap_id)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -638,7 +629,6 @@ TEST (bootstrap_processor, lazy_hash_pruning)
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	node_flags.enable_pruning = true;
 	auto node0 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -647,12 +637,12 @@ TEST (bootstrap_processor, lazy_hash_pruning)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (nano::dev::genesis_key.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -772,7 +762,6 @@ TEST (bootstrap_processor, lazy_max_pull_count)
 	nano::node_flags node_flags;
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	auto node0 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -781,12 +770,12 @@ TEST (bootstrap_processor, lazy_max_pull_count)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -876,7 +865,6 @@ TEST (bootstrap_processor, lazy_unclear_state_link)
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	node_flags.disable_legacy_bootstrap = true;
 	auto node1 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key;
 	// Generating test chain
 
@@ -884,12 +872,12 @@ TEST (bootstrap_processor, lazy_unclear_state_link)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (genesis.hash ()))
+				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node1->process (*send1).code);
 	auto send2 = builder
@@ -939,7 +927,6 @@ TEST (bootstrap_processor, lazy_unclear_state_link_not_existing)
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	node_flags.disable_legacy_bootstrap = true;
 	auto node1 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key, key2;
 	// Generating test chain
 
@@ -947,12 +934,12 @@ TEST (bootstrap_processor, lazy_unclear_state_link_not_existing)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (genesis.hash ()))
+				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node1->process (*send1).code);
 	auto open (std::make_shared<nano::open_block> (send1->hash (), key.pub, key.pub, key.prv, key.pub, *system.work.generate (key.pub)));
@@ -991,7 +978,6 @@ TEST (bootstrap_processor, DISABLED_lazy_destinations)
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	node_flags.disable_legacy_bootstrap = true;
 	auto node1 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key1, key2;
 	// Generating test chain
 
@@ -999,12 +985,12 @@ TEST (bootstrap_processor, DISABLED_lazy_destinations)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (genesis.hash ()))
+				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	ASSERT_EQ (nano::process_result::progress, node1->process (*send1).code);
 	auto send2 = builder
@@ -1056,7 +1042,6 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 	node_flags.disable_legacy_bootstrap = true;
 	node_flags.enable_pruning = true;
 	auto node1 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key1, key2;
 	// Generating test chain
 
@@ -1064,12 +1049,12 @@ TEST (bootstrap_processor, lazy_pruning_missing_block)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (genesis.hash ()))
+				 .work (*system.work.generate (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	node1->process_active (send1);
 	auto send2 = builder
@@ -1151,7 +1136,6 @@ TEST (bootstrap_processor, lazy_cancel)
 	nano::node_flags node_flags;
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	auto node0 (system.add_node (config, node_flags));
-	nano::genesis genesis;
 	nano::keypair key1;
 	// Generating test chain
 
@@ -1159,12 +1143,12 @@ TEST (bootstrap_processor, lazy_cancel)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 
 	// Start lazy bootstrap with last block in chain known
@@ -1190,7 +1174,6 @@ TEST (bootstrap_processor, wallet_lazy_frontier)
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	node_flags.disable_legacy_bootstrap = true;
 	auto node0 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -1199,12 +1182,12 @@ TEST (bootstrap_processor, wallet_lazy_frontier)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -1269,7 +1252,6 @@ TEST (bootstrap_processor, wallet_lazy_pending)
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	node_flags.disable_legacy_bootstrap = true;
 	auto node0 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -1278,12 +1260,12 @@ TEST (bootstrap_processor, wallet_lazy_pending)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node0->work_generate_blocking (genesis.hash ()))
+				 .work (*node0->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -1331,7 +1313,6 @@ TEST (bootstrap_processor, multiple_attempts)
 	nano::node_flags node_flags;
 	node_flags.disable_bootstrap_bulk_push_client = true;
 	auto node1 = system.add_node (config, node_flags);
-	nano::genesis genesis;
 	nano::keypair key1;
 	nano::keypair key2;
 	// Generating test chain
@@ -1340,12 +1321,12 @@ TEST (bootstrap_processor, multiple_attempts)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
 				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node1->work_generate_blocking (genesis.hash ()))
+				 .work (*node1->work_generate_blocking (nano::dev::genesis->hash ()))
 				 .build_shared ();
 	auto receive1 = builder
 					.make_block ()
@@ -1434,8 +1415,7 @@ TEST (frontier_req, begin)
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::frontier_req_server> (connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current);
-	nano::genesis genesis;
-	ASSERT_EQ (genesis.hash (), request->frontier);
+	ASSERT_EQ (nano::dev::genesis->hash (), request->frontier);
 }
 
 TEST (frontier_req, end)
@@ -1455,14 +1435,13 @@ TEST (frontier_req, count)
 {
 	nano::system system (1);
 	auto node1 = system.nodes[0];
-	nano::genesis genesis;
 	// Public key FB93... after genesis in accounts table
 	nano::keypair key1 ("ED5AE0A6505B14B67435C29FD9FEEBC26F597D147BC92F6D795FFAD7AFD3D967");
 	nano::state_block_builder builder;
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key1.pub)
@@ -1529,8 +1508,7 @@ TEST (frontier_req, time_cutoff)
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::frontier_req_server> (connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current);
-	nano::genesis genesis;
-	ASSERT_EQ (genesis.hash (), request->frontier);
+	ASSERT_EQ (nano::dev::genesis->hash (), request->frontier);
 	// Wait 4 seconds until age of account will be > 3 seconds
 	std::this_thread::sleep_for (std::chrono::milliseconds (4100));
 	auto req2 (std::make_unique<nano::frontier_req> ());
@@ -1547,7 +1525,6 @@ TEST (frontier_req, confirmed_frontier)
 {
 	nano::system system (1);
 	auto node1 = system.nodes[0];
-	nano::genesis genesis;
 	nano::raw_key priv_key;
 	// Public key before genesis in accounts table
 	while (nano::pub_key (priv_key).number () >= nano::dev::genesis_key.pub.number ())
@@ -1565,7 +1542,7 @@ TEST (frontier_req, confirmed_frontier)
 
 	auto send1 = builder
 				 .account (nano::dev::genesis_key.pub)
-				 .previous (genesis.hash ())
+				 .previous (nano::dev::genesis->hash ())
 				 .representative (nano::dev::genesis_key.pub)
 				 .balance (nano::dev::genesis_amount - nano::Gxrb_ratio)
 				 .link (key_before_genesis.pub)
@@ -1623,7 +1600,7 @@ TEST (frontier_req, confirmed_frontier)
 	connection->requests.push (std::unique_ptr<nano::message>{});
 	auto request (std::make_shared<nano::frontier_req_server> (connection, std::move (req)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request->current);
-	ASSERT_EQ (genesis.hash (), request->frontier);
+	ASSERT_EQ (nano::dev::genesis->hash (), request->frontier);
 
 	// Request starting with account before genesis (confirmed only)
 	auto connection2 (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*node1), node1));
@@ -1637,7 +1614,7 @@ TEST (frontier_req, confirmed_frontier)
 	connection2->requests.push (std::unique_ptr<nano::message>{});
 	auto request2 (std::make_shared<nano::frontier_req_server> (connection2, std::move (req2)));
 	ASSERT_EQ (nano::dev::genesis_key.pub, request2->current);
-	ASSERT_EQ (genesis.hash (), request2->frontier);
+	ASSERT_EQ (nano::dev::genesis->hash (), request2->frontier);
 
 	// Request starting with account after genesis (confirmed only)
 	auto connection3 (std::make_shared<nano::bootstrap_server> (std::make_shared<nano::socket> (*node1), node1));

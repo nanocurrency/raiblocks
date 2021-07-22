@@ -210,7 +210,6 @@ TEST (frontiers_confirmation, expired_optimistic_elections_removal)
 
 TEST (frontiers_confirmation, mode)
 {
-	nano::genesis genesis;
 	nano::keypair key;
 	nano::node_flags node_flags;
 	// Always mode
@@ -219,7 +218,7 @@ TEST (frontiers_confirmation, mode)
 		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::always;
 		auto node = system.add_node (node_config, node_flags);
-		nano::state_block send (nano::dev::genesis_key.pub, genesis.hash (), nano::dev::genesis_key.pub, nano::dev::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *node->work_generate_blocking (genesis.hash ()));
+		nano::state_block send (nano::dev::genesis_key.pub, nano::dev::genesis->hash (), nano::dev::genesis_key.pub, nano::dev::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *node->work_generate_blocking (nano::dev::genesis->hash ()));
 		{
 			auto transaction = node->store.tx_begin_write ();
 			ASSERT_EQ (nano::process_result::progress, node->ledger.process (transaction, send).code);
@@ -232,7 +231,7 @@ TEST (frontiers_confirmation, mode)
 		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::automatic;
 		auto node = system.add_node (node_config, node_flags);
-		nano::state_block send (nano::dev::genesis_key.pub, genesis.hash (), nano::dev::genesis_key.pub, nano::dev::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *node->work_generate_blocking (genesis.hash ()));
+		nano::state_block send (nano::dev::genesis_key.pub, nano::dev::genesis->hash (), nano::dev::genesis_key.pub, nano::dev::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *node->work_generate_blocking (nano::dev::genesis->hash ()));
 		{
 			auto transaction = node->store.tx_begin_write ();
 			ASSERT_EQ (nano::process_result::progress, node->ledger.process (transaction, send).code);
@@ -245,7 +244,7 @@ TEST (frontiers_confirmation, mode)
 		nano::node_config node_config (nano::get_available_port (), system.logging);
 		node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
 		auto node = system.add_node (node_config, node_flags);
-		nano::state_block send (nano::dev::genesis_key.pub, genesis.hash (), nano::dev::genesis_key.pub, nano::dev::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *node->work_generate_blocking (genesis.hash ()));
+		nano::state_block send (nano::dev::genesis_key.pub, nano::dev::genesis->hash (), nano::dev::genesis_key.pub, nano::dev::genesis_amount - nano::Gxrb_ratio, key.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *node->work_generate_blocking (nano::dev::genesis->hash ()));
 		{
 			auto transaction = node->store.tx_begin_write ();
 			ASSERT_EQ (nano::process_result::progress, node->ledger.process (transaction, send).code);

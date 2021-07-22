@@ -11,9 +11,8 @@ TEST (vote_processor, codes)
 {
 	nano::system system (1);
 	auto & node (*system.nodes[0]);
-	nano::genesis genesis;
 	nano::keypair key;
-	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
+	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
 	auto vote_invalid = std::make_shared<nano::vote> (*vote);
 	vote_invalid->signature.bytes[0] ^= 1;
 	auto channel (std::make_shared<nano::transport::channel_loopback> (node));
@@ -28,9 +27,8 @@ TEST (vote_processor, codes)
 	ASSERT_EQ (nano::vote_code::indeterminate, node.vote_processor.vote_blocking (vote, channel));
 
 	// First vote from an account for an ongoing election
-	genesis.open->sideband_set (nano::block_sideband (nano::dev::genesis->account (), 0, nano::dev::genesis_amount, 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-	node.block_confirm (genesis.open);
-	ASSERT_NE (nullptr, node.active.election (genesis.open->qualified_root ()));
+	node.block_confirm (nano::dev::genesis);
+	ASSERT_NE (nullptr, node.active.election (nano::dev::genesis->qualified_root ()));
 	ASSERT_EQ (nano::vote_code::vote, node.vote_processor.vote_blocking (vote, channel));
 
 	// Processing the same vote is a replay
@@ -46,7 +44,7 @@ TEST (vote_processor, codes)
 	ASSERT_EQ (nano::vote_code::vote, node.vote_processor.vote_blocking (vote, channel));
 
 	// Once the election is removed (confirmed / dropped) the vote is again indeterminate
-	node.active.erase (*genesis.open);
+	node.active.erase (*nano::dev::genesis);
 	ASSERT_EQ (nano::vote_code::indeterminate, node.vote_processor.vote_blocking (vote, channel));
 }
 
@@ -54,8 +52,7 @@ TEST (vote_processor, flush)
 {
 	nano::system system (1);
 	auto & node (*system.nodes[0]);
-	nano::genesis genesis;
-	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
+	auto vote (std::make_shared<nano::vote> (nano::dev::genesis_key.pub, nano::dev::genesis_key.prv, 1, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
 	auto channel (std::make_shared<nano::transport::channel_loopback> (node));
 	for (unsigned i = 0; i < 2000; ++i)
 	{
@@ -71,16 +68,14 @@ TEST (vote_processor, invalid_signature)
 {
 	nano::system system{ 1 };
 	auto & node = *system.nodes[0];
-	nano::genesis genesis;
 	nano::keypair key;
-	auto vote = std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () });
+	auto vote = std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ nano::dev::genesis->hash () });
 	auto vote_invalid = std::make_shared<nano::vote> (*vote);
 	vote_invalid->signature.bytes[0] ^= 1;
 	auto channel = std::make_shared<nano::transport::channel_loopback> (node);
 
-	genesis.open->sideband_set (nano::block_sideband (nano::dev::genesis->account (), 0, nano::dev::genesis_amount, 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-	node.block_confirm (genesis.open);
-	auto election = node.active.election (genesis.open->qualified_root ());
+	node.block_confirm (nano::dev::genesis);
+	auto election = node.active.election (nano::dev::genesis->qualified_root ());
 	ASSERT_TRUE (election);
 	ASSERT_EQ (1, election->votes ().size ());
 	node.vote_processor.vote (vote_invalid, channel);
@@ -97,9 +92,8 @@ TEST (vote_processor, no_capacity)
 	nano::node_flags node_flags;
 	node_flags.vote_processor_capacity = 0;
 	auto & node (*system.add_node (node_flags));
-	nano::genesis genesis;
 	nano::keypair key;
-	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
+	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
 	auto channel (std::make_shared<nano::transport::channel_loopback> (node));
 	ASSERT_TRUE (node.vote_processor.vote (vote, channel));
 }
@@ -110,9 +104,8 @@ TEST (vote_processor, overflow)
 	nano::node_flags node_flags;
 	node_flags.vote_processor_capacity = 1;
 	auto & node (*system.add_node (node_flags));
-	nano::genesis genesis;
 	nano::keypair key;
-	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ genesis.open->hash () }));
+	auto vote (std::make_shared<nano::vote> (key.pub, key.prv, 1, std::vector<nano::block_hash>{ nano::dev::genesis->hash () }));
 	auto channel (std::make_shared<nano::transport::channel_loopback> (node));
 
 	// No way to lock the processor, but queueing votes in quick succession must result in overflow

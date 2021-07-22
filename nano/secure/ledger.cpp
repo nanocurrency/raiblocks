@@ -804,6 +804,7 @@ nano::uint128_t nano::ledger::balance_safe (nano::transaction const & transactio
 	nano::uint128_t result (0);
 	if (pruning && !hash_a.is_zero () && !store.block.exists (transaction_a, hash_a))
 	{
+		std::cerr << "error\n";
 		error_a = true;
 		result = 0;
 	}

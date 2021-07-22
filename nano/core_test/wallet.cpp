@@ -636,7 +636,7 @@ TEST (wallet, work)
 	nano::system system (1);
 	auto wallet (system.wallet (0));
 	wallet->insert_adhoc (nano::dev::genesis_key.prv);
-	nano::genesis genesis;
+	wallet->insert_adhoc (nano::dev::genesis_key.prv);
 	auto done (false);
 	system.deadline_set (20s);
 	while (!done)
@@ -645,7 +645,7 @@ TEST (wallet, work)
 		uint64_t work (0);
 		if (!wallet->store.work_get (transaction, nano::dev::genesis_key.pub, work))
 		{
-			done = nano::work_difficulty (genesis.open->work_version (), genesis.hash (), work) >= system.nodes[0]->default_difficulty (genesis.open->work_version ());
+			done = nano::work_difficulty (nano::dev::genesis->work_version (), nano::dev::genesis->hash (), work) >= system.nodes[0]->default_difficulty (nano::dev::genesis->work_version ());
 		}
 		ASSERT_NO_ERROR (system.poll ());
 	}

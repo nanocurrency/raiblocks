@@ -334,14 +334,6 @@ enum class tally_result
 	confirm
 };
 
-class genesis final
-{
-public:
-	genesis ();
-	nano::block_hash hash () const;
-	std::shared_ptr<nano::block> open;
-};
-
 class network_params;
 
 /** Protocol versions whose value may depend on the active network */

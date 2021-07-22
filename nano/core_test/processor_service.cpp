@@ -14,7 +14,6 @@ TEST (processor_service, bad_send_signature)
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats);
-	nano::genesis genesis;
 	auto transaction (store->tx_begin_write ());
 	store->initialize (transaction, ledger.cache);
 	nano::work_pool pool (std::numeric_limits<unsigned>::max ());
@@ -33,7 +32,6 @@ TEST (processor_service, bad_receive_signature)
 	ASSERT_FALSE (store->init_error ());
 	nano::stat stats;
 	nano::ledger ledger (*store, stats);
-	nano::genesis genesis;
 	auto transaction (store->tx_begin_write ());
 	store->initialize (transaction, ledger.cache);
 	nano::work_pool pool (std::numeric_limits<unsigned>::max ());

@@ -425,10 +425,12 @@ TEST (wallet, create_open_receive)
 	nano::keypair key;
 	nano::system system (1);
 	system.wallet (0)->insert_adhoc (nano::dev::genesis_key.prv);
-	system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, 100);
+	auto block1 = system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, 100);
 	nano::block_hash latest1 (system.nodes[0]->latest (nano::dev::genesis_key.pub));
-	system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, 100);
+	std::cerr << latest1.to_string () << '\n' << block1->to_json () << '\n';
+	auto block2 = system.wallet (0)->send_action (nano::dev::genesis_key.pub, key.pub, 100);
 	nano::block_hash latest2 (system.nodes[0]->latest (nano::dev::genesis_key.pub));
+	std::cerr << latest2.to_string () << '\n' << block2->to_json () << '\n';
 	ASSERT_NE (latest1, latest2);
 	system.wallet (0)->insert_adhoc (key.prv);
 	auto account (nano::dev::genesis_key.pub);
@@ -515,7 +517,6 @@ TEST (history, short_text)
 	auto wallet (std::make_shared<nano_qt::wallet> (*test_application, processor, *system.nodes[0], system.wallet (0), account));
 	auto store = nano::make_store (system.nodes[0]->logger, nano::unique_path ());
 	ASSERT_TRUE (!store->init_error ());
-	nano::genesis genesis;
 	nano::ledger ledger (*store, system.nodes[0]->stats);
 	{
 		auto transaction (store->tx_begin_write ());
@@ -553,7 +554,6 @@ TEST (history, pruned_source)
 	auto wallet (std::make_shared<nano_qt::wallet> (*test_application, processor, *system.nodes[0], system.wallet (0), account));
 	auto store = nano::make_store (system.nodes[0]->logger, nano::unique_path ());
 	ASSERT_TRUE (!store->init_error ());
-	nano::genesis genesis;
 	nano::ledger ledger (*store, system.nodes[0]->stats);
 	ledger.pruning = true;
 	nano::block_hash next_pruning;

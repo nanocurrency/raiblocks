@@ -8,7 +8,7 @@
 
 TEST (network_filter, unit)
 {
-	nano::genesis genesis;
+	nano::ledger_constants constants{ nano::networks::nano_dev_network };
 	nano::network_filter filter (1);
 	auto one_block = [&filter] (std::shared_ptr<nano::block> const & block_a, bool expect_duplicate_a) {
 		nano::publish message (block_a);
@@ -32,15 +32,15 @@ TEST (network_filter, unit)
 		ASSERT_NE (nullptr, block);
 		ASSERT_EQ (*block, *block_a);
 	};
-	one_block (genesis.open, false);
+	one_block (constants.genesis, false);
 	for (int i = 0; i < 10; ++i)
 	{
-		one_block (genesis.open, true);
+		one_block (constants.genesis, true);
 	}
 	nano::state_block_builder builder;
 	auto new_block = builder
 					 .account (nano::dev::genesis_key.pub)
-					 .previous (genesis.open->hash ())
+					 .previous (constants.genesis_hash ())
 					 .representative (nano::dev::genesis_key.pub)
 					 .balance (nano::dev::genesis_amount - 10 * nano::xrb_ratio)
 					 .link (nano::public_key ())
@@ -55,14 +55,14 @@ TEST (network_filter, unit)
 	}
 	for (int i = 0; i < 100; ++i)
 	{
-		one_block (genesis.open, false);
+		one_block (constants.genesis, false);
 		one_block (new_block, false);
 	}
 }
 
 TEST (network_filter, many)
 {
-	nano::genesis genesis;
+	nano::ledger_constants constants{ nano::networks::nano_dev_network };
 	nano::network_filter filter (4);
 	nano::keypair key1;
 	for (int i = 0; i < 100; ++i)
@@ -70,7 +70,7 @@ TEST (network_filter, many)
 		nano::state_block_builder builder;
 		auto block = builder
 					 .account (nano::dev::genesis_key.pub)
-					 .previous (genesis.open->hash ())
+					 .previous (constants.genesis_hash ())
 					 .representative (nano::dev::genesis_key.pub)
 					 .balance (nano::dev::genesis_amount - i * 10 * nano::xrb_ratio)
 					 .link (key1.pub)

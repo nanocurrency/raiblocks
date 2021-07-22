@@ -97,8 +97,7 @@ TEST (wallets, vote_minimum)
 	auto & node1 (*system.nodes[0]);
 	nano::keypair key1;
 	nano::keypair key2;
-	nano::genesis genesis;
-	nano::state_block send1 (nano::dev::genesis_key.pub, genesis.hash (), nano::dev::genesis_key.pub, std::numeric_limits<nano::uint128_t>::max () - node1.config.vote_minimum.number (), key1.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (genesis.hash ()));
+	nano::state_block send1 (nano::dev::genesis_key.pub, nano::dev::genesis->hash (), nano::dev::genesis_key.pub, std::numeric_limits<nano::uint128_t>::max () - node1.config.vote_minimum.number (), key1.pub, nano::dev::genesis_key.prv, nano::dev::genesis_key.pub, *system.work.generate (nano::dev::genesis->hash ()));
 	ASSERT_EQ (nano::process_result::progress, node1.process (send1).code);
 	nano::state_block open1 (key1.pub, 0, key1.pub, node1.config.vote_minimum.number (), send1.hash (), key1.prv, key1.pub, *system.work.generate (key1.pub));
 	ASSERT_EQ (nano::process_result::progress, node1.process (open1).code);

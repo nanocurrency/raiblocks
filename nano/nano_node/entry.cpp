@@ -1786,7 +1786,6 @@ int main (int argc, char * const * argv)
 			node_flags.read_only = false;
 			nano::update_flags (node_flags, vm);
 			nano::inactive_node node (nano::unique_path (), node_flags);
-			nano::genesis genesis;
 			auto begin (std::chrono::high_resolution_clock::now ());
 			uint64_t block_count (0);
 			size_t count (0);

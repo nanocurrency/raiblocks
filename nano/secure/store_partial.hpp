@@ -105,16 +105,15 @@ public:
 	 */
 	void initialize (nano::write_transaction const & transaction_a, nano::ledger_cache & ledger_cache_a) override
 	{
-		auto & genesis = *network_params.ledger.genesis;
-		auto hash_l (genesis.hash ());
+		auto hash_l (network_params.ledger.genesis->hash ());
 		debug_assert (account.begin (transaction_a) == account.end ());
-		genesis.sideband_set (nano::block_sideband (network_params.ledger.genesis_account (), 0, nano::dev::genesis_amount, 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
-		block.put (transaction_a, hash_l, genesis);
+		network_params.ledger.genesis->sideband_set (nano::block_sideband (network_params.ledger.genesis_account (), 0, nano::dev::genesis_amount, 1, nano::seconds_since_epoch (), nano::epoch::epoch_0, false, false, false, nano::epoch::epoch_0));
+		block.put (transaction_a, hash_l, *nano::dev::genesis);
 		++ledger_cache_a.block_count;
-		confirmation_height.put (transaction_a, network_params.ledger.genesis_account (), nano::confirmation_height_info{ 1, genesis.hash () });
+		confirmation_height.put (transaction_a, network_params.ledger.genesis_account (), nano::confirmation_height_info{ 1, network_params.ledger.genesis->hash () });
 		++ledger_cache_a.cemented_count;
 		ledger_cache_a.final_votes_confirmation_canary = (network_params.ledger.final_votes_canary_account == network_params.ledger.genesis_account () && 1 >= network_params.ledger.final_votes_canary_height);
-		account.put (transaction_a, network_params.ledger.genesis_account (), { hash_l, network_params.ledger.genesis_account (), genesis.hash (), std::numeric_limits<nano::uint128_t>::max (), nano::seconds_since_epoch (), 1, nano::epoch::epoch_0 });
+		account.put (transaction_a, network_params.ledger.genesis_account (), { hash_l, network_params.ledger.genesis_account (), network_params.ledger.genesis->hash (), std::numeric_limits<nano::uint128_t>::max (), nano::seconds_since_epoch (), 1, nano::epoch::epoch_0 });
 		++ledger_cache_a.account_count;
 		ledger_cache_a.rep_weights.representation_put (network_params.ledger.genesis_account (), std::numeric_limits<nano::uint128_t>::max ());
 		frontier.put (transaction_a, hash_l, network_params.ledger.genesis_account ());

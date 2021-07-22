@@ -344,7 +344,6 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			is_initialized = (store.account.begin (transaction) != store.account.end ());
 		}
 
-		nano::genesis genesis;
 		if (!is_initialized && !flags.read_only)
 		{
 			auto transaction (store.tx_begin_write ({ tables::accounts, tables::blocks, tables::confirmation_height, tables::frontiers }));
@@ -352,7 +351,7 @@ nano::node::node (boost::asio::io_context & io_ctx_a, boost::filesystem::path co
 			store.initialize (transaction, ledger.cache);
 		}
 
-		if (!ledger.block_or_pruned_exists (genesis.hash ()))
+		if (!ledger.block_or_pruned_exists (network_params.ledger.genesis->hash ()))
 		{
 			std::stringstream ss;
 			ss << "Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, "
