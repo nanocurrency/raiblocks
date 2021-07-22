@@ -199,6 +199,7 @@ public:
 			case nano::block_type::receive:
 			case nano::block_type::change:
 				result = block_a->sideband ().balance.number ();
+				std::cerr << "sideband: " << result << '\n';
 				break;
 			case nano::block_type::send:
 				result = boost::polymorphic_downcast<nano::send_block *> (block_a.get ())->hashables.balance.number ();
