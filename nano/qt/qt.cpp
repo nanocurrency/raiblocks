@@ -598,6 +598,7 @@ public:
 			else
 			{
 				type = "Receive";
+				std::cerr << block_a.hash ().to_string () << ':' << block_a.hashables.link.as_block_hash ().to_string () << '\n';
 				debug_assert (ledger.store.block.exists (transaction, block_a.hashables.link.as_block_hash ()));
 				account = ledger.account_safe (transaction, block_a.hashables.link.as_block_hash (), error_or_pruned);
 				if (error_or_pruned)
